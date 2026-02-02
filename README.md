@@ -1,5 +1,10 @@
 # KSeF CLI - Generator Faktur
 
+[![CI/CD Pipeline](https://github.com/krzysbaranski/ksef-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/krzysbaranski/ksef-cli/actions/workflows/ci.yml)
+[![Python Version](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/downloads/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Aplikacja CLI do generacji faktur w formacie KSeF (Krajowy System e-Faktur) zgodnie ze schematem FA (3) wersja 1-0E.
 
 ## Instalacja
@@ -75,4 +80,81 @@ ksef-cli validate -f faktura.xml
 ## Przykłady
 
 Zobacz `examples/example_invoice.json` dla pełnego przykładu.
+
+## Rozwój
+
+### Instalacja dla deweloperów
+
+```bash
+# Sklonuj repozytorium
+git clone https://github.com/krzysbaranski/ksef-cli.git
+cd ksef-cli
+
+# Stwórz wirtualne środowisko
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Zainstaluj zależności deweloperskie
+pip install -r requirements-dev.txt
+pip install -e .
+```
+
+### Uruchamianie testów
+
+```bash
+# Uruchom wszystkie testy
+pytest
+
+# Uruchom testy z pokryciem kodu
+pytest --cov=ksef_cli --cov-report=term-missing
+
+# Uruchom konkretny test
+pytest tests/test_models.py
+```
+
+### Sprawdzanie jakości kodu
+
+```bash
+# Formatowanie kodu
+black ksef_cli/ tests/
+
+# Sortowanie importów
+isort ksef_cli/ tests/
+
+# Linting
+flake8 ksef_cli/ tests/
+
+# Type checking
+mypy ksef_cli/ --ignore-missing-imports
+
+# Security scanning
+bandit -r ksef_cli/
+```
+
+### Standardy kodu
+
+- **Python**: 3.8+
+- **Formatowanie**: Black (line length: 100)
+- **Linting**: Flake8
+- **Type hints**: Wymagane dla wszystkich funkcji publicznych
+- **Pokrycie testami**: Minimum 80%
+- **Dokumentacja**: Docstringi dla wszystkich klas i funkcji publicznych
+
+## Kontrybuowanie
+
+Zapraszamy do współtworzenia projektu! Zobacz [CONTRIBUTING.md](CONTRIBUTING.md) dla szczegółowych informacji.
+
+## Licencja
+
+MIT License - zobacz plik LICENSE dla szczegółów.
+
+## CI/CD
+
+Projekt używa GitHub Actions do automatycznego:
+- Testowania na wielu wersjach Python (3.8-3.12)
+- Sprawdzania jakości kodu (Black, Flake8, isort, mypy)
+- Skanowania bezpieczeństwa (Bandit, Safety)
+- Weryfikacji pokrycia kodu (minimum 80%)
+
+Status pipeline'u można sprawdzić w zakładce [Actions](https://github.com/krzysbaranski/ksef-cli/actions).
 ```
