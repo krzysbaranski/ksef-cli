@@ -1,0 +1,53 @@
+{
+  "sprzedawca": {
+    "nip": "1132347267",
+    "nazwa": "Moja Firma Sp. z o.o.",
+    "adres": {
+      "kod_kraju": "PL",
+      "adres_l1": "ul. Przykładowa 123",
+      "adres_l2": "00-001 Warszawa"
+    }
+  },
+  "nabywca": {
+    "nip": "9492107026",
+    "nazwa": "Klient Sp. z o.o.",
+    "adres": {
+      "kod_kraju": "PL",
+      "adres_l1": "ul. Testowa 456, 01-234 Kraków"
+    }
+  },
+  "faktura": {
+    "numer": "FV/2026/01/001",
+    "data_wystawienia": "2026-02-01",
+    "miejsce_wystawienia": "Warszawa",
+    "data_sprzedazy": "2026-02-01",
+    "waluta": "PLN",
+    "pozycje": [
+      {
+        "nr": 1,
+        "nazwa": "Usługa programistyczna",
+        "jm": "godz",
+        "ilosc": 10,
+        "cena_netto": 150.00,
+        "wartosc_netto": 1500.00,
+        "stawka_vat": 23
+      },
+      {
+        "nr": 2,
+        "nazwa": "Konsultacje IT",
+        "jm": "godz",
+        "ilosc": 5,
+        "cena_netto": 200.00,
+        "wartosc_netto": 1000.00,
+        "stawka_vat": 23
+      }
+    ],
+    "forma_platnosci": "6",
+    "dodatkowe_opisy": [
+      {
+        "klucz": "Uwagi",
+        "wartosc": "Termin płatności: 14 dni"
+      }
+    ]
+  }
+}
