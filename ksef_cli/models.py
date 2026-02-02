@@ -1,6 +1,7 @@
-from typing import List, Optional
-from pydantic import BaseModel, Field
 from datetime import date
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class Adres(BaseModel):
@@ -55,7 +56,7 @@ class Faktura(BaseModel):
         return {
             "netto": round(suma_netto, 2),
             "vat": round(suma_vat, 2),
-            "brutto": round(suma_brutto, 2)
+            "brutto": round(suma_brutto, 2),
         }
 
 

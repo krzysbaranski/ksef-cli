@@ -1,53 +1,34 @@
 """Pytest configuration and fixtures for KSeF CLI tests"""
-import pytest
+
 from datetime import date
-from ksef_cli.models import (
-    Adres,
-    Podmiot,
-    PozycjaFaktury,
-    Faktura,
-    FakturaKSeF,
-    DodatkowyOpis
-)
+
+import pytest
+
+from ksef_cli.models import Adres, DodatkowyOpis, Faktura, FakturaKSeF, Podmiot, PozycjaFaktury
 
 
 @pytest.fixture
 def adres_pl():
     """Sample Polish address"""
-    return Adres(
-        kod_kraju="PL",
-        adres_l1="ul. Testowa 123",
-        adres_l2="00-001 Warszawa"
-    )
+    return Adres(kod_kraju="PL", adres_l1="ul. Testowa 123", adres_l2="00-001 Warszawa")
 
 
 @pytest.fixture
 def adres_pl_simple():
     """Simple Polish address without second line"""
-    return Adres(
-        kod_kraju="PL",
-        adres_l1="ul. Prosta 1"
-    )
+    return Adres(kod_kraju="PL", adres_l1="ul. Prosta 1")
 
 
 @pytest.fixture
 def sprzedawca(adres_pl):
     """Sample seller entity"""
-    return Podmiot(
-        nip="1132347267",
-        nazwa="Moja Firma Sp. z o.o.",
-        adres=adres_pl
-    )
+    return Podmiot(nip="1132347267", nazwa="Moja Firma Sp. z o.o.", adres=adres_pl)
 
 
 @pytest.fixture
 def nabywca(adres_pl_simple):
     """Sample buyer entity"""
-    return Podmiot(
-        nip="9492107026",
-        nazwa="Klient Sp. z o.o.",
-        adres=adres_pl_simple
-    )
+    return Podmiot(nip="9492107026", nazwa="Klient Sp. z o.o.", adres=adres_pl_simple)
 
 
 @pytest.fixture
@@ -60,7 +41,7 @@ def pozycja_faktury():
         ilosc=1.0,
         cena_netto=100.00,
         wartosc_netto=100.00,
-        stawka_vat=23
+        stawka_vat=23,
     )
 
 
@@ -75,7 +56,7 @@ def pozycje_faktury():
             ilosc=10.0,
             cena_netto=150.00,
             wartosc_netto=1500.00,
-            stawka_vat=23
+            stawka_vat=23,
         ),
         PozycjaFaktury(
             nr=2,
@@ -84,8 +65,8 @@ def pozycje_faktury():
             ilosc=5.0,
             cena_netto=200.00,
             wartosc_netto=1000.00,
-            stawka_vat=23
-        )
+            stawka_vat=23,
+        ),
     ]
 
 
@@ -99,27 +80,20 @@ def faktura(pozycje_faktury):
         data_sprzedazy=date(2026, 2, 1),
         waluta="PLN",
         pozycje=pozycje_faktury,
-        forma_platnosci="6"
+        forma_platnosci="6",
     )
 
 
 @pytest.fixture
 def faktura_ksef(sprzedawca, nabywca, faktura):
     """Complete KSeF invoice"""
-    return FakturaKSeF(
-        sprzedawca=sprzedawca,
-        nabywca=nabywca,
-        faktura=faktura
-    )
+    return FakturaKSeF(sprzedawca=sprzedawca, nabywca=nabywca, faktura=faktura)
 
 
 @pytest.fixture
 def dodatkowy_opis():
     """Sample additional description"""
-    return DodatkowyOpis(
-        klucz="Uwagi",
-        wartosc="Termin płatności: 14 dni"
-    )
+    return DodatkowyOpis(klucz="Uwagi", wartosc="Termin płatności: 14 dni")
 
 
 @pytest.fixture
@@ -132,16 +106,13 @@ def sample_invoice_json():
             "adres": {
                 "kod_kraju": "PL",
                 "adres_l1": "ul. Przykładowa 123",
-                "adres_l2": "00-001 Warszawa"
-            }
+                "adres_l2": "00-001 Warszawa",
+            },
         },
         "nabywca": {
             "nip": "9492107026",
             "nazwa": "Klient Sp. z o.o.",
-            "adres": {
-                "kod_kraju": "PL",
-                "adres_l1": "ul. Testowa 456"
-            }
+            "adres": {"kod_kraju": "PL", "adres_l1": "ul. Testowa 456"},
         },
         "faktura": {
             "numer": "FV/2026/01/001",
@@ -157,9 +128,9 @@ def sample_invoice_json():
                     "ilosc": 1,
                     "cena_netto": 100.00,
                     "wartosc_netto": 100.00,
-                    "stawka_vat": 23
+                    "stawka_vat": 23,
                 }
             ],
-            "forma_platnosci": "6"
-        }
+            "forma_platnosci": "6",
+        },
     }

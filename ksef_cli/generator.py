@@ -1,5 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
+
 from lxml import etree
+
 from .models import FakturaKSeF
 
 
@@ -11,18 +13,11 @@ class KSeFGenerator:
     XSD_NAMESPACE = "http://www.w3.org/2001/XMLSchema"
 
     def __init__(self):
-        self.nsmap = {
-            None: self.NAMESPACE,
-            'xsi': self.XSI_NAMESPACE,
-            'xsd': self.XSD_NAMESPACE
-        }
+        self.nsmap = {None: self.NAMESPACE, "xsi": self.XSI_NAMESPACE, "xsd": self.XSD_NAMESPACE}
 
     def generuj(self, dane: FakturaKSeF) -> str:
         """Generuje XML faktury KSeF"""
-        root = etree.Element(
-            f"{{{self.NAMESPACE}}}Faktura",
-            nsmap=self.nsmap
-        )
+        root = etree.Element(f"{{{self.NAMESPACE}}}Faktura", nsmap=self.nsmap)
 
         # Nagłówek
         self._dodaj_naglowek(root, dane)
@@ -37,14 +32,11 @@ class KSeFGenerator:
         self._dodaj_fakture(root, dane.faktura)
 
         # Formatowanie XML
-        xml_string = etree.tostring(
-            root,
-            pretty_print=True,
-            xml_declaration=True,
-            encoding='utf-8'
+        xml_string: bytes = etree.tostring(
+            root, pretty_print=True, xml_declaration=True, encoding="utf-8"
         )
 
-        return xml_string.decode('utf-8')
+        return xml_string.decode("utf-8")
 
     def _dodaj_naglowek(self, root, dane):
         """Dodaje nagłówek faktury"""
@@ -54,7 +46,7 @@ class KSeFGenerator:
             naglowek,
             f"{{{self.NAMESPACE}}}KodFormularza",
             kodSystemowy="FA (3)",
-            wersjaSchemy="1-0E"
+            wersjaSchemy="1-0E",
         )
         kod_formularza.text = "FA"
 
@@ -62,7 +54,7 @@ class KSeFGenerator:
         wariant.text = "3"
 
         data_wytw = etree.SubElement(naglowek, f"{{{self.NAMESPACE}}}DataWytworzeniaFa")
-        data_wytw.text = datetime.utcnow().isoformat() + "Z"
+        data_wytw.text = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
         system_info = etree.SubElement(naglowek, f"{{{self.NAMESPACE}}}SystemInfo")
         system_info.text = dane.system_info
@@ -143,15 +135,15 @@ class KSeFGenerator:
 
         # Suma netto
         p13_1 = etree.SubElement(fa, f"{{{self.NAMESPACE}}}P_13_1")
-        p13_1.text = str(sumy['netto'])
+        p13_1.text = str(sumy["netto"])
 
         # Suma VAT
         p14_1 = etree.SubElement(fa, f"{{{self.NAMESPACE}}}P_14_1")
-        p14_1.text = str(sumy['vat'])
+        p14_1.text = str(sumy["vat"])
 
         # Suma brutto
         p15 = etree.SubElement(fa, f"{{{self.NAMESPACE}}}P_15")
-        p15.text = str(sumy['brutto'])
+        p15.text = str(sumy["brutto"])
 
         # Adnotacje (zgodnie z przykładem)
         self._dodaj_adnotacje(fa)
@@ -182,7 +174,7 @@ class KSeFGenerator:
         """Dodaje adnotacje do faktury"""
         adnotacje = etree.SubElement(fa, f"{{{self.NAMESPACE}}}Adnotacje")
 
-        for field in ['P_16', 'P_17', 'P_18', 'P_18A']:
+        for field in ["P_16", "P_17", "P_18", "P_18A"]:
             elem = etree.SubElement(adnotacje, f"{{{self.NAMESPACE}}}{field}")
             elem.text = "2"
 

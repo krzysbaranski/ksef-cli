@@ -1,15 +1,11 @@
 """Tests for Pydantic models in ksef_cli.models"""
-import pytest
+
 from datetime import date
+
+import pytest
 from pydantic import ValidationError
-from ksef_cli.models import (
-    Adres,
-    Podmiot,
-    PozycjaFaktury,
-    Faktura,
-    FakturaKSeF,
-    DodatkowyOpis
-)
+
+from ksef_cli.models import Adres, DodatkowyOpis, Faktura, FakturaKSeF, Podmiot, PozycjaFaktury
 
 
 class TestAdres:
@@ -17,11 +13,7 @@ class TestAdres:
 
     def test_adres_valid(self):
         """Test creating valid address"""
-        adres = Adres(
-            kod_kraju="PL",
-            adres_l1="ul. Testowa 123",
-            adres_l2="00-001 Warszawa"
-        )
+        adres = Adres(kod_kraju="PL", adres_l1="ul. Testowa 123", adres_l2="00-001 Warszawa")
         assert adres.kod_kraju == "PL"
         assert adres.adres_l1 == "ul. Testowa 123"
         assert adres.adres_l2 == "00-001 Warszawa"
@@ -47,11 +39,7 @@ class TestPodmiot:
 
     def test_podmiot_valid(self, adres_pl):
         """Test creating valid entity"""
-        podmiot = Podmiot(
-            nip="1132347267",
-            nazwa="Moja Firma",
-            adres=adres_pl
-        )
+        podmiot = Podmiot(nip="1132347267", nazwa="Moja Firma", adres=adres_pl)
         assert podmiot.nip == "1132347267"
         assert podmiot.nazwa == "Moja Firma"
         assert podmiot.adres == adres_pl
@@ -84,7 +72,7 @@ class TestPozycjaFaktury:
             ilosc=2.0,
             cena_netto=100.00,
             wartosc_netto=200.00,
-            stawka_vat=23
+            stawka_vat=23,
         )
         assert pozycja.nr == 1
         assert pozycja.wartosc_netto == 200.00
@@ -98,7 +86,7 @@ class TestPozycjaFaktury:
             ilosc=1.0,
             cena_netto=100.00,
             wartosc_netto=100.00,
-            stawka_vat=23
+            stawka_vat=23,
         )
         vat = pozycja.oblicz_vat()
         assert vat == 23.00
@@ -112,7 +100,7 @@ class TestPozycjaFaktury:
             ilosc=1.0,
             cena_netto=50.00,
             wartosc_netto=50.00,
-            stawka_vat=8
+            stawka_vat=8,
         )
         vat = pozycja.oblicz_vat()
         assert vat == 4.00
@@ -126,7 +114,7 @@ class TestPozycjaFaktury:
             ilosc=1.0,
             cena_netto=100.00,
             wartosc_netto=100.00,
-            stawka_vat=5
+            stawka_vat=5,
         )
         vat = pozycja.oblicz_vat()
         assert vat == 5.00
@@ -140,7 +128,7 @@ class TestPozycjaFaktury:
             ilosc=1.0,
             cena_netto=100.00,
             wartosc_netto=100.00,
-            stawka_vat=0
+            stawka_vat=0,
         )
         vat = pozycja.oblicz_vat()
         assert vat == 0.00
@@ -154,7 +142,7 @@ class TestPozycjaFaktury:
             ilosc=3.0,
             cena_netto=33.33,
             wartosc_netto=99.99,
-            stawka_vat=23
+            stawka_vat=23,
         )
         vat = pozycja.oblicz_vat()
         assert vat == 23.00  # 99.99 * 0.23 = 22.9977 -> rounds to 23.00
@@ -169,7 +157,7 @@ class TestPozycjaFaktury:
             cena_netto=100.00,
             wartosc_netto=100.00,
             stawka_vat=23,
-            kwota_vat=25.00  # Pre-set value
+            kwota_vat=25.00,  # Pre-set value
         )
         vat = pozycja.oblicz_vat()
         assert vat == 25.00  # Should return pre-set value
@@ -180,10 +168,7 @@ class TestDodatkowyOpis:
 
     def test_dodatkowy_opis_valid(self):
         """Test creating valid additional description"""
-        opis = DodatkowyOpis(
-            klucz="Uwagi",
-            wartosc="Termin płatności: 14 dni"
-        )
+        opis = DodatkowyOpis(klucz="Uwagi", wartosc="Termin płatności: 14 dni")
         assert opis.klucz == "Uwagi"
         assert opis.wartosc == "Termin płatności: 14 dni"
 
@@ -199,7 +184,7 @@ class TestFaktura:
             miejsce_wystawienia="Warszawa",
             data_sprzedazy=date(2026, 2, 1),
             waluta="PLN",
-            pozycje=pozycje_faktury
+            pozycje=pozycje_faktury,
         )
         assert faktura.numer == "FV/2026/01/001"
         assert len(faktura.pozycje) == 2
@@ -211,7 +196,7 @@ class TestFaktura:
             data_wystawienia=date(2026, 2, 1),
             miejsce_wystawienia="Warszawa",
             data_sprzedazy=date(2026, 2, 1),
-            pozycje=[pozycja_faktury]
+            pozycje=[pozycja_faktury],
         )
         assert faktura.waluta == "PLN"
 
@@ -222,7 +207,7 @@ class TestFaktura:
             data_wystawienia=date(2026, 2, 1),
             miejsce_wystawienia="Warszawa",
             data_sprzedazy=date(2026, 2, 1),
-            pozycje=[pozycja_faktury]
+            pozycje=[pozycja_faktury],
         )
         assert faktura.forma_platnosci == "6"
 
@@ -235,19 +220,19 @@ class TestFaktura:
             ilosc=1.0,
             cena_netto=100.00,
             wartosc_netto=100.00,
-            stawka_vat=23
+            stawka_vat=23,
         )
         faktura = Faktura(
             numer="FV/001",
             data_wystawienia=date(2026, 2, 1),
             miejsce_wystawienia="Warszawa",
             data_sprzedazy=date(2026, 2, 1),
-            pozycje=[pozycja]
+            pozycje=[pozycja],
         )
         sumy = faktura.oblicz_sumy()
-        assert sumy['netto'] == 100.00
-        assert sumy['vat'] == 23.00
-        assert sumy['brutto'] == 123.00
+        assert sumy["netto"] == 100.00
+        assert sumy["vat"] == 23.00
+        assert sumy["brutto"] == 123.00
 
     def test_oblicz_sumy_multiple_items(self, pozycje_faktury):
         """Test sum calculation with multiple items"""
@@ -256,12 +241,12 @@ class TestFaktura:
             data_wystawienia=date(2026, 2, 1),
             miejsce_wystawienia="Warszawa",
             data_sprzedazy=date(2026, 2, 1),
-            pozycje=pozycje_faktury
+            pozycje=pozycje_faktury,
         )
         sumy = faktura.oblicz_sumy()
-        assert sumy['netto'] == 2500.00  # 1500 + 1000
-        assert sumy['vat'] == 575.00  # 345 + 230
-        assert sumy['brutto'] == 3075.00  # 2500 + 575
+        assert sumy["netto"] == 2500.00  # 1500 + 1000
+        assert sumy["vat"] == 575.00  # 345 + 230
+        assert sumy["brutto"] == 3075.00  # 2500 + 575
 
     def test_oblicz_sumy_different_vat_rates(self):
         """Test sum calculation with different VAT rates"""
@@ -273,7 +258,7 @@ class TestFaktura:
                 ilosc=1.0,
                 cena_netto=100.00,
                 wartosc_netto=100.00,
-                stawka_vat=23
+                stawka_vat=23,
             ),
             PozycjaFaktury(
                 nr=2,
@@ -282,26 +267,26 @@ class TestFaktura:
                 ilosc=1.0,
                 cena_netto=50.00,
                 wartosc_netto=50.00,
-                stawka_vat=8
-            )
+                stawka_vat=8,
+            ),
         ]
         faktura = Faktura(
             numer="FV/001",
             data_wystawienia=date(2026, 2, 1),
             miejsce_wystawienia="Warszawa",
             data_sprzedazy=date(2026, 2, 1),
-            pozycje=pozycje
+            pozycje=pozycje,
         )
         sumy = faktura.oblicz_sumy()
-        assert sumy['netto'] == 150.00
-        assert sumy['vat'] == 27.00  # 23 + 4
-        assert sumy['brutto'] == 177.00
+        assert sumy["netto"] == 150.00
+        assert sumy["vat"] == 27.00  # 23 + 4
+        assert sumy["brutto"] == 177.00
 
     def test_faktura_with_dodatkowe_opisy(self, pozycja_faktury):
         """Test invoice with additional descriptions"""
         opisy = [
             DodatkowyOpis(klucz="Uwagi", wartosc="Test"),
-            DodatkowyOpis(klucz="Termin", wartosc="14 dni")
+            DodatkowyOpis(klucz="Termin", wartosc="14 dni"),
         ]
         faktura = Faktura(
             numer="FV/001",
@@ -309,7 +294,7 @@ class TestFaktura:
             miejsce_wystawienia="Warszawa",
             data_sprzedazy=date(2026, 2, 1),
             pozycje=[pozycja_faktury],
-            dodatkowe_opisy=opisy
+            dodatkowe_opisy=opisy,
         )
         assert len(faktura.dodatkowe_opisy) == 2
 
@@ -322,7 +307,7 @@ class TestFaktura:
                 miejsce_wystawienia="Warszawa",
                 data_sprzedazy=date(2026, 2, 1),
                 waluta="EURO",  # Too long
-                pozycje=[pozycja_faktury]
+                pozycje=[pozycja_faktury],
             )
 
 
@@ -331,31 +316,19 @@ class TestFakturaKSeF:
 
     def test_faktura_ksef_valid(self, sprzedawca, nabywca, faktura):
         """Test creating valid KSeF invoice"""
-        faktura_ksef = FakturaKSeF(
-            sprzedawca=sprzedawca,
-            nabywca=nabywca,
-            faktura=faktura
-        )
+        faktura_ksef = FakturaKSeF(sprzedawca=sprzedawca, nabywca=nabywca, faktura=faktura)
         assert faktura_ksef.sprzedawca == sprzedawca
         assert faktura_ksef.nabywca == nabywca
         assert faktura_ksef.faktura == faktura
 
     def test_faktura_ksef_default_prefiks(self, sprzedawca, nabywca, faktura):
         """Test default taxpayer prefix"""
-        faktura_ksef = FakturaKSeF(
-            sprzedawca=sprzedawca,
-            nabywca=nabywca,
-            faktura=faktura
-        )
+        faktura_ksef = FakturaKSeF(sprzedawca=sprzedawca, nabywca=nabywca, faktura=faktura)
         assert faktura_ksef.prefiks_podatnika == "PL"
 
     def test_faktura_ksef_default_system_info(self, sprzedawca, nabywca, faktura):
         """Test default system info"""
-        faktura_ksef = FakturaKSeF(
-            sprzedawca=sprzedawca,
-            nabywca=nabywca,
-            faktura=faktura
-        )
+        faktura_ksef = FakturaKSeF(sprzedawca=sprzedawca, nabywca=nabywca, faktura=faktura)
         assert faktura_ksef.system_info == "KSeF CLI Generator"
 
     def test_faktura_ksef_custom_values(self, sprzedawca, nabywca, faktura):
@@ -365,7 +338,7 @@ class TestFakturaKSeF:
             nabywca=nabywca,
             faktura=faktura,
             prefiks_podatnika="DE",
-            system_info="Custom System"
+            system_info="Custom System",
         )
         assert faktura_ksef.prefiks_podatnika == "DE"
         assert faktura_ksef.system_info == "Custom System"
