@@ -158,17 +158,38 @@ def interactive():
     type=click.Path(exists=True),
     help="Plik XML do walidacji",
 )
-def validate(xml_file):
-    """Waliduje plik XML faktury KSeF"""
+@click.option(
+    "--schema",
+    "schema_path",
+    type=click.Path(exists=True),
+    help="Ścieżka do lokalnego pliku XSD schematu (opcjonalnie)",
+)
+def validate(xml_file, schema_path):
+    """Waliduje plik XML faktury KSeF względem schematu FA-3"""
     try:
-        from lxml import etree
+        from .validator import KSeFValidator
 
-        with open(xml_file, "rb") as f:
-            doc = etree.parse(f)
+        validator = KSeFValidator(schema_path=schema_path)
 
-        click.echo(f"✓ Plik {xml_file} jest poprawnym XML")
-        click.echo(f"  Element główny: {doc.getroot().tag}")
+        with open(xml_file, encoding="utf-8") as f:
+            xml_content = f.read()
 
+        is_valid, errors = validator.validate_xml(xml_content)
+
+        if is_valid:
+            click.echo(f"✓ Plik {xml_file} jest poprawny")
+            # Show warnings if any
+            warnings = [e for e in errors if e.error_type == "warning"]
+            for w in warnings:
+                click.echo(f"  ⚠ {w.message}", err=True)
+        else:
+            click.echo(f"✗ Plik {xml_file} zawiera błędy:", err=True)
+            for error in errors:
+                click.echo(f"  {error}", err=True)
+            raise click.Abort()
+
+    except click.Abort:
+        raise
     except Exception as e:
         click.echo(f"✗ Błąd walidacji: {str(e)}", err=True)
         raise click.Abort()
@@ -200,6 +221,41 @@ def visualize(xml_file, output_file):
         generator.generuj_z_pliku(xml_file, output_file)
 
         click.echo(f"✓ Wizualizacja PDF wygenerowana: {output_file}")
+
+    except Exception as e:
+        click.echo(f"✗ Błąd: {str(e)}", err=True)
+        raise click.Abort()
+
+
+@cli.command()
+@click.option(
+    "-i",
+    "--input",
+    "xml_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Plik XML faktury KSeF",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_file",
+    required=True,
+    type=click.Path(),
+    help="Plik wyjściowy HTML",
+)
+def html(xml_file, output_file):
+    """Generuje wizualizację HTML faktury KSeF z pliku XML"""
+    try:
+        from .html_generator import KSeFHTMLGenerator
+
+        generator = KSeFHTMLGenerator()
+        html_content = generator.generuj_html_z_pliku(xml_file)
+
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        click.echo(f"✓ Wizualizacja HTML wygenerowana: {output_file}")
 
     except Exception as e:
         click.echo(f"✗ Błąd: {str(e)}", err=True)

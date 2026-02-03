@@ -235,7 +235,7 @@ class TestValidateCommand:
 
         assert result.exit_code == 0
         assert "✓ Plik" in result.output
-        assert "jest poprawnym XML" in result.output
+        assert "jest poprawny" in result.output
 
     def test_validate_command_invalid_xml(self, tmp_path):
         """Test validate command with invalid XML"""
@@ -248,7 +248,7 @@ class TestValidateCommand:
         result = runner.invoke(cli, ["validate", "-f", str(xml_file)])
 
         assert result.exit_code != 0
-        assert "✗ Błąd walidacji" in result.output
+        assert "zawiera błędy" in result.output or "Błąd walidacji" in result.output
 
     def test_validate_command_missing_file(self, tmp_path):
         """Test validate command with missing file"""
@@ -258,8 +258,8 @@ class TestValidateCommand:
 
         assert result.exit_code != 0
 
-    def test_validate_command_shows_root_element(self, faktura_ksef, tmp_path):
-        """Test that validate command shows root element"""
+    def test_validate_command_valid_structure(self, faktura_ksef, tmp_path):
+        """Test that validate command validates structure correctly"""
         from ksef_cli.generator import KSeFGenerator
 
         runner = CliRunner()
@@ -274,7 +274,7 @@ class TestValidateCommand:
         result = runner.invoke(cli, ["validate", "-f", str(xml_file)])
 
         assert result.exit_code == 0
-        assert "Element główny" in result.output
+        assert "jest poprawny" in result.output
 
 
 class TestInteractiveCommand:
@@ -527,6 +527,94 @@ class TestVisualizeCommand:
         output_file = tmp_path / "output.pdf"
 
         result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "✗ Błąd" in result.output
+
+
+class TestHtmlCommand:
+    """Tests for html command"""
+
+    def test_html_command_creates_file(self, faktura_ksef, tmp_path):
+        """Test that html command creates HTML file"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.html"
+
+        result = runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code == 0
+        assert output_file.exists()
+        assert "✓ Wizualizacja HTML wygenerowana" in result.output
+
+    def test_html_command_creates_valid_html(self, faktura_ksef, tmp_path):
+        """Test that html command creates valid HTML"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.html"
+
+        runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        with open(output_file, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        assert "<!DOCTYPE html>" in html_content
+        assert "FAKTURA VAT" in html_content
+        assert "SPRZEDAWCA" in html_content
+        assert "NABYWCA" in html_content
+
+    def test_html_command_renders_polish_characters(self, faktura_ksef, tmp_path):
+        """Test that html command renders Polish characters correctly"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.html"
+
+        runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        with open(output_file, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        # Check UTF-8 charset is declared for Polish character support
+        assert 'charset="UTF-8"' in html_content
+
+    def test_html_command_invalid_xml(self, tmp_path):
+        """Test html command with invalid XML"""
+        runner = CliRunner()
+
+        xml_file = tmp_path / "invalid.xml"
+        with open(xml_file, "w") as f:
+            f.write("< invalid xml >")
+
+        output_file = tmp_path / "output.html"
+
+        result = runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
 
         assert result.exit_code != 0
         assert "✗ Błąd" in result.output
