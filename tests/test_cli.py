@@ -601,8 +601,8 @@ class TestHtmlCommand:
         with open(output_file, "r", encoding="utf-8") as f:
             html_content = f.read()
 
-        # Check Polish characters are rendered (from fixture data)
-        assert 'charset="UTF-8"' in html_content or 'charset="UTF-8"' in html_content
+        # Check UTF-8 charset is declared for Polish character support
+        assert 'charset="UTF-8"' in html_content
 
     def test_html_command_invalid_xml(self, tmp_path):
         """Test html command with invalid XML"""
