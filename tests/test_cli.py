@@ -75,6 +75,8 @@ class TestGenerateCommand:
         result = runner.invoke(cli, ["generate", "-i", str(input_file), "-o", str(output_file)])
 
         assert result.exit_code != 0
+        assert "Błąd parsowania JSON" in result.output
+        assert "Linia" in result.output
 
     def test_generate_command_missing_required_fields(self, tmp_path):
         """Test generate command with missing required fields"""
@@ -97,6 +99,55 @@ class TestGenerateCommand:
         result = runner.invoke(cli, ["generate", "-i", str(input_file), "-o", str(output_file)])
 
         assert result.exit_code != 0
+        assert "Brak wymaganego pola" in result.output
+
+    def test_generate_command_validation_error_nip(self, tmp_path):
+        """Test generate command with invalid NIP shows detailed validation error"""
+        runner = CliRunner()
+
+        # Data with invalid NIP (too short)
+        data = {
+            "sprzedawca": {
+                "nip": "123",  # NIP must be exactly 10 characters
+                "nazwa": "Test Firma",
+                "adres": {"kod_kraju": "PL", "adres_l1": "ul. Test 1"},
+            },
+            "nabywca": {
+                "nip": "9492107026",
+                "nazwa": "Klient",
+                "adres": {"kod_kraju": "PL", "adres_l1": "ul. Test 2"},
+            },
+            "faktura": {
+                "numer": "FV/001",
+                "data_wystawienia": "2026-02-01",
+                "miejsce_wystawienia": "Warszawa",
+                "data_sprzedazy": "2026-02-01",
+                "waluta": "PLN",
+                "pozycje": [
+                    {
+                        "nr": 1,
+                        "nazwa": "Usługa",
+                        "jm": "szt",
+                        "ilosc": 1,
+                        "cena_netto": 100.00,
+                        "wartosc_netto": 100.00,
+                        "stawka_vat": 23,
+                    }
+                ],
+            },
+        }
+
+        input_file = tmp_path / "invalid_nip.json"
+        with open(input_file, "w") as f:
+            json.dump(data, f)
+
+        output_file = tmp_path / "output.xml"
+
+        result = runner.invoke(cli, ["generate", "-i", str(input_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "Błąd walidacji danych faktury" in result.output
+        assert "sprzedawca -> nip" in result.output
 
     def test_generate_command_with_dodatkowe_opisy(self, tmp_path):
         """Test generate command with additional descriptions"""
