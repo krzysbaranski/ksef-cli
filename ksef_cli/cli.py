@@ -111,9 +111,7 @@ def interactive():
         # Faktura
         click.echo("\nDANE FAKTURY:")
         numer = click.prompt("Numer faktury")
-        data_wyst = click.prompt(
-            "Data wystawienia (RRRR-MM-DD)", type=click.DateTime(["%Y-%m-%d"])
-        )
+        data_wyst = click.prompt("Data wystawienia (RRRR-MM-DD)", type=click.DateTime(["%Y-%m-%d"]))
         miejsce = click.prompt("Miejsce wystawienia")
         data_sprz = click.prompt("Data sprzedaży (RRRR-MM-DD)", type=click.DateTime(["%Y-%m-%d"]))
 
