@@ -1,6 +1,6 @@
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+target-version = ['py314']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -39,7 +39,7 @@ addopts = [
 ]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -86,7 +86,7 @@ name = "ksef-cli"
 version = "1.0.0"
 description = "CLI tool for generating KSeF (Polish National e-Invoice System) invoices"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.14"
 license = {text = "MIT"}
 authors = [
     {name = "KSeF CLI Contributors"}
@@ -96,11 +96,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
     "click>=8.0.0",

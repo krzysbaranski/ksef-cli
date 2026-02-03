@@ -1,7 +1,7 @@
 # KSeF CLI - Generator Faktur
 
 [![CI/CD Pipeline](https://github.com/krzysbaranski/ksef-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/krzysbaranski/ksef-cli/actions/workflows/ci.yml)
-[![Python Version](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.14-blue)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -151,7 +151,7 @@ bandit -r ksef_cli/
 
 ### Standardy kodu
 
-- **Python**: 3.8+
+- **Python**: 3.14+
 - **Formatowanie**: Black (line length: 100)
 - **Linting**: Flake8
 - **Type hints**: Wymagane dla wszystkich funkcji publicznych
@@ -169,7 +169,7 @@ MIT License - zobacz plik LICENSE dla szczegółów.
 ## CI/CD
 
 Projekt używa GitHub Actions do automatycznego:
-- Testowania na wielu wersjach Python (3.8-3.12)
+- Testowania na Python 3.14
 - Sprawdzania jakości kodu (Black, Flake8, isort, mypy)
 - Skanowania bezpieczeństwa (Bandit, Safety)
 - Weryfikacji pokrycia kodu (minimum 80%)
