@@ -425,6 +425,7 @@ class TestCLIHelp:
         assert "generate" in result.output
         assert "interactive" in result.output
         assert "validate" in result.output
+        assert "visualize" in result.output
 
     def test_generate_help(self):
         """Test generate command help"""
@@ -442,3 +443,90 @@ class TestCLIHelp:
 
         assert result.exit_code == 0
         assert "file" in result.output
+
+    def test_visualize_help(self):
+        """Test visualize command help"""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["visualize", "--help"])
+
+        assert result.exit_code == 0
+        assert "input" in result.output
+        assert "output" in result.output
+
+
+class TestVisualizeCommand:
+    """Tests for visualize command"""
+
+    def test_visualize_command_basic(self, faktura_ksef, tmp_path):
+        """Test basic visualize command"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        # Generate XML file first
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w", encoding="utf-8") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.pdf"
+
+        result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code == 0
+        assert output_file.exists()
+        assert "✓ Wizualizacja PDF wygenerowana" in result.output
+
+    def test_visualize_command_creates_valid_pdf(self, faktura_ksef, tmp_path):
+        """Test that visualize command creates valid PDF"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w", encoding="utf-8") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.pdf"
+
+        result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code == 0
+        assert output_file.exists()
+
+        # Check PDF header
+        with open(output_file, "rb") as f:
+            header = f.read(8)
+            assert header.startswith(b"%PDF")
+
+    def test_visualize_command_missing_input_file(self, tmp_path):
+        """Test visualize command with missing input file"""
+        runner = CliRunner()
+
+        output_file = tmp_path / "output.pdf"
+
+        result = runner.invoke(
+            cli, ["visualize", "-i", str(tmp_path / "nonexistent.xml"), "-o", str(output_file)]
+        )
+
+        assert result.exit_code != 0
+
+    def test_visualize_command_invalid_xml(self, tmp_path):
+        """Test visualize command with invalid XML"""
+        runner = CliRunner()
+
+        xml_file = tmp_path / "invalid.xml"
+        with open(xml_file, "w") as f:
+            f.write("< invalid xml >")
+
+        output_file = tmp_path / "output.pdf"
+
+        result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "✗ Błąd" in result.output

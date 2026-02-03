@@ -34,6 +34,24 @@ ksef-cli interactive
 ksef-cli validate -f faktura.xml
 ```
 
+### Wizualizacja faktury XML do PDF
+
+Generowanie wizualizacji PDF z pliku XML faktury KSeF:
+
+```bash
+ksef-cli visualize -i faktura.xml -o faktura.pdf
+```
+
+Można również połączyć generowanie XML i PDF:
+
+```bash
+# Wygeneruj XML
+ksef-cli generate -i invoice_data.json -o faktura.xml
+
+# Wygeneruj PDF z XML
+ksef-cli visualize -i faktura.xml -o faktura.pdf
+```
+
 ## Format danych wejściowych (JSON)
 
 ```json
