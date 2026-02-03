@@ -174,5 +174,37 @@ def validate(xml_file):
         raise click.Abort()
 
 
+@cli.command()
+@click.option(
+    "-i",
+    "--input",
+    "xml_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Plik XML faktury KSeF",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_file",
+    required=True,
+    type=click.Path(),
+    help="Plik wyjściowy PDF",
+)
+def visualize(xml_file, output_file):
+    """Generuje wizualizację PDF faktury KSeF z pliku XML"""
+    try:
+        from .pdf_generator import KSeFPDFGenerator
+
+        generator = KSeFPDFGenerator()
+        generator.generuj_z_pliku(xml_file, output_file)
+
+        click.echo(f"✓ Wizualizacja PDF wygenerowana: {output_file}")
+
+    except Exception as e:
+        click.echo(f"✗ Błąd: {str(e)}", err=True)
+        raise click.Abort()
+
+
 if __name__ == "__main__":
     cli()
