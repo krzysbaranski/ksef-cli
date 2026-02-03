@@ -26,17 +26,42 @@ class KSeFPDFGenerator:
     def _register_fonts(self):
         """Rejestruje czcionki obsługujące polskie znaki"""
         # DejaVu Sans fonts support Polish characters (ą, ę, ó, ł, ś, ć, ń, ź, ż)
-        font_paths = [
-            ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "DejaVuSans"),
-            ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "DejaVuSans-Bold"),
+        # Cross-platform font paths
+        import sys
+        if sys.platform == "win32":
+            font_dirs = [
+                "C:\\Windows\\Fonts",
+                os.path.expandvars("%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts"),
+            ]
+        elif sys.platform == "darwin":
+            font_dirs = [
+                "/Library/Fonts",
+                os.path.expanduser("~/Library/Fonts"),
+                "/System/Library/Fonts",
+            ]
+        else:  # Linux and other Unix-like systems
+            font_dirs = [
+                "/usr/share/fonts/truetype/dejavu",
+                "/usr/share/fonts/TTF",
+                os.path.expanduser("~/.fonts"),
+            ]
+
+        font_files = [
+            ("DejaVuSans.ttf", "DejaVuSans"),
+            ("DejaVuSans-Bold.ttf", "DejaVuSans-Bold"),
         ]
 
-        for font_path, font_name in font_paths:
-            if os.path.exists(font_path):
-                try:
-                    pdfmetrics.registerFont(TTFont(font_name, font_path))
-                except Exception:
-                    pass  # Font already registered or not available
+        for font_file, font_name in font_files:
+            for font_dir in font_dirs:
+                font_path = os.path.join(font_dir, font_file)
+                if os.path.exists(font_path):
+                    try:
+                        pdfmetrics.registerFont(TTFont(font_name, font_path))
+                        break  # Font registered, move to next font
+                    except pdfmetrics.PdfFontEmbedError:
+                        pass  # Font already registered, try next
+                    except OSError:
+                        continue  # File access issue, try next path
 
     def _setup_styles(self):
         """Konfiguracja stylów dokumentu"""
