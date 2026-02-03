@@ -28,6 +28,7 @@ class KSeFPDFGenerator:
         # DejaVu Sans fonts support Polish characters (ą, ę, ó, ł, ś, ć, ń, ź, ż)
         # Cross-platform font paths
         import sys
+
         if sys.platform == "win32":
             font_dirs = [
                 "C:\\Windows\\Fonts",
@@ -67,7 +68,9 @@ class KSeFPDFGenerator:
         """Konfiguracja stylów dokumentu"""
         # Use DejaVu Sans font for Polish character support, fallback to Helvetica
         font_regular = "DejaVuSans" if self._font_available("DejaVuSans") else "Helvetica"
-        font_bold = "DejaVuSans-Bold" if self._font_available("DejaVuSans-Bold") else "Helvetica-Bold"
+        font_bold = (
+            "DejaVuSans-Bold" if self._font_available("DejaVuSans-Bold") else "Helvetica-Bold"
+        )
 
         self.styles.add(
             ParagraphStyle(
