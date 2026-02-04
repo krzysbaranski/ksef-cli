@@ -1,5 +1,6 @@
 """PDF generator for KSeF invoices."""
 
+import os
 from typing import Optional
 
 from lxml import etree
@@ -7,6 +8,8 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
@@ -16,11 +19,59 @@ class KSeFPDFGenerator:
     NAMESPACE = "http://crd.gov.pl/wzor/2025/06/25/13775/"
 
     def __init__(self):
+        self._register_fonts()
         self.styles = getSampleStyleSheet()
         self._setup_styles()
 
+    def _register_fonts(self):
+        """Rejestruje czcionki obsługujące polskie znaki"""
+        # DejaVu Sans fonts support Polish characters (ą, ę, ó, ł, ś, ć, ń, ź, ż)
+        # Cross-platform font paths
+        import sys
+
+        if sys.platform == "win32":
+            font_dirs = [
+                "C:\\Windows\\Fonts",
+                os.path.expandvars("%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts"),
+            ]
+        elif sys.platform == "darwin":
+            font_dirs = [
+                "/Library/Fonts",
+                os.path.expanduser("~/Library/Fonts"),
+                "/System/Library/Fonts",
+            ]
+        else:  # Linux and other Unix-like systems
+            font_dirs = [
+                "/usr/share/fonts/truetype/dejavu",
+                "/usr/share/fonts/TTF",
+                os.path.expanduser("~/.fonts"),
+            ]
+
+        font_files = [
+            ("DejaVuSans.ttf", "DejaVuSans"),
+            ("DejaVuSans-Bold.ttf", "DejaVuSans-Bold"),
+        ]
+
+        for font_file, font_name in font_files:
+            for font_dir in font_dirs:
+                font_path = os.path.join(font_dir, font_file)
+                if os.path.exists(font_path):
+                    try:
+                        pdfmetrics.registerFont(TTFont(font_name, font_path))
+                        break  # Font registered, move to next font
+                    except pdfmetrics.PdfFontEmbedError:
+                        pass  # Font already registered, try next
+                    except OSError:
+                        continue  # File access issue, try next path
+
     def _setup_styles(self):
         """Konfiguracja stylów dokumentu"""
+        # Use DejaVu Sans font for Polish character support, fallback to Helvetica
+        font_regular = "DejaVuSans" if self._font_available("DejaVuSans") else "Helvetica"
+        font_bold = (
+            "DejaVuSans-Bold" if self._font_available("DejaVuSans-Bold") else "Helvetica-Bold"
+        )
+
         self.styles.add(
             ParagraphStyle(
                 name="InvoiceTitle",
@@ -28,7 +79,7 @@ class KSeFPDFGenerator:
                 leading=20,
                 alignment=1,  # Center
                 spaceAfter=12,
-                fontName="Helvetica-Bold",
+                fontName=font_bold,
             )
         )
         self.styles.add(
@@ -36,7 +87,7 @@ class KSeFPDFGenerator:
                 name="SectionHeader",
                 fontSize=12,
                 leading=14,
-                fontName="Helvetica-Bold",
+                fontName=font_bold,
                 spaceBefore=12,
                 spaceAfter=6,
             )
@@ -46,7 +97,7 @@ class KSeFPDFGenerator:
                 name="FieldLabel",
                 fontSize=9,
                 leading=11,
-                fontName="Helvetica-Bold",
+                fontName=font_bold,
             )
         )
         self.styles.add(
@@ -54,9 +105,17 @@ class KSeFPDFGenerator:
                 name="FieldValue",
                 fontSize=10,
                 leading=12,
-                fontName="Helvetica",
+                fontName=font_regular,
             )
         )
+
+        # Store font names for use in table styles
+        self._font_regular = font_regular
+        self._font_bold = font_bold
+
+    def _font_available(self, font_name: str) -> bool:
+        """Check if font is registered"""
+        return font_name in pdfmetrics.getRegisteredFontNames()
 
     def generuj_z_xml(self, xml_content: str, output_path: str) -> str:
         """
@@ -126,6 +185,12 @@ class KSeFPDFGenerator:
         # Płatność
         elements.extend(self._generuj_platnosc(root, ns))
 
+        # Dodatkowe opisy (DodatkowyOpis)
+        dodatkowe_opisy = self._generuj_dodatkowe_opisy(root, ns)
+        if dodatkowe_opisy:
+            elements.append(Spacer(1, 4 * mm))
+            elements.extend(dodatkowe_opisy)
+
         doc.build(elements)
         return output_path
 
@@ -153,8 +218,10 @@ class KSeFPDFGenerator:
         table.setStyle(
             TableStyle(
                 [
-                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                    ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (0, -1), self._font_bold),
+                    ("FONTNAME", (2, 0), (2, -1), self._font_bold),
+                    ("FONTNAME", (1, 0), (1, -1), self._font_regular),
+                    ("FONTNAME", (3, 0), (3, -1), self._font_regular),
                     ("FONTSIZE", (0, 0), (-1, -1), 9),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
@@ -203,8 +270,10 @@ class KSeFPDFGenerator:
         table.setStyle(
             TableStyle(
                 [
-                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                    ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (0, -1), self._font_bold),
+                    ("FONTNAME", (2, 0), (2, -1), self._font_bold),
+                    ("FONTNAME", (1, 0), (1, -1), self._font_regular),
+                    ("FONTNAME", (3, 0), (3, -1), self._font_regular),
                     ("FONTSIZE", (0, 0), (-1, -1), 9),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
@@ -249,7 +318,8 @@ class KSeFPDFGenerator:
         table.setStyle(
             TableStyle(
                 [
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (-1, 0), self._font_bold),
+                    ("FONTNAME", (0, 1), (-1, -1), self._font_regular),
                     ("FONTSIZE", (0, 0), (-1, -1), 8),
                     ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
                     ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
@@ -294,11 +364,12 @@ class KSeFPDFGenerator:
         table.setStyle(
             TableStyle(
                 [
-                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (0, -1), self._font_bold),
+                    ("FONTNAME", (1, 0), (1, 1), self._font_regular),
                     ("FONTSIZE", (0, 0), (-1, -1), 10),
                     ("ALIGN", (0, 0), (0, -1), "RIGHT"),
                     ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-                    ("FONTNAME", (0, 2), (1, 2), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 2), (1, 2), self._font_bold),
                     ("FONTSIZE", (0, 2), (1, 2), 12),
                     ("BACKGROUND", (0, 2), (1, 2), colors.lightgrey),
                     ("BOX", (0, 2), (1, 2), 1, colors.black),
@@ -333,11 +404,45 @@ class KSeFPDFGenerator:
         table.setStyle(
             TableStyle(
                 [
-                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (0, -1), self._font_bold),
+                    ("FONTNAME", (1, 0), (1, -1), self._font_regular),
                     ("FONTSIZE", (0, 0), (-1, -1), 9),
                 ]
             )
         )
         elements.append(table)
+
+        return elements
+
+    def _generuj_dodatkowe_opisy(self, root: etree._Element, ns: dict) -> list:
+        """Generuje sekcję dodatkowych opisów (DodatkowyOpis)"""
+        elements = []
+
+        dodatkowe_opisy = root.findall(".//ns:Fa/ns:DodatkowyOpis", ns)
+        if not dodatkowe_opisy:
+            return elements
+
+        elements.append(Paragraph("DODATKOWE INFORMACJE", self.styles["SectionHeader"]))
+
+        opisy_data = []
+        for opis in dodatkowe_opisy:
+            klucz = self._get_text_from_elem(opis, "ns:Klucz", ns) or ""
+            wartosc = self._get_text_from_elem(opis, "ns:Wartosc", ns) or ""
+            opisy_data.append([f"{klucz}:", wartosc])
+
+        if opisy_data:
+            table = Table(opisy_data, colWidths=[45 * mm, 135 * mm])
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("FONTNAME", (0, 0), (0, -1), self._font_bold),
+                        ("FONTNAME", (1, 0), (1, -1), self._font_regular),
+                        ("FONTSIZE", (0, 0), (-1, -1), 9),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ]
+                )
+            )
+            elements.append(table)
 
         return elements

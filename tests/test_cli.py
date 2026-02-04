@@ -75,6 +75,8 @@ class TestGenerateCommand:
         result = runner.invoke(cli, ["generate", "-i", str(input_file), "-o", str(output_file)])
 
         assert result.exit_code != 0
+        assert "Błąd parsowania JSON" in result.output
+        assert "Linia" in result.output
 
     def test_generate_command_missing_required_fields(self, tmp_path):
         """Test generate command with missing required fields"""
@@ -97,6 +99,55 @@ class TestGenerateCommand:
         result = runner.invoke(cli, ["generate", "-i", str(input_file), "-o", str(output_file)])
 
         assert result.exit_code != 0
+        assert "Brak wymaganego pola" in result.output
+
+    def test_generate_command_validation_error_nip(self, tmp_path):
+        """Test generate command with invalid NIP shows detailed validation error"""
+        runner = CliRunner()
+
+        # Data with invalid NIP (too short)
+        data = {
+            "sprzedawca": {
+                "nip": "123",  # NIP must be exactly 10 characters
+                "nazwa": "Test Firma",
+                "adres": {"kod_kraju": "PL", "adres_l1": "ul. Test 1"},
+            },
+            "nabywca": {
+                "nip": "9492107026",
+                "nazwa": "Klient",
+                "adres": {"kod_kraju": "PL", "adres_l1": "ul. Test 2"},
+            },
+            "faktura": {
+                "numer": "FV/001",
+                "data_wystawienia": "2026-02-01",
+                "miejsce_wystawienia": "Warszawa",
+                "data_sprzedazy": "2026-02-01",
+                "waluta": "PLN",
+                "pozycje": [
+                    {
+                        "nr": 1,
+                        "nazwa": "Usługa",
+                        "jm": "szt",
+                        "ilosc": 1,
+                        "cena_netto": 100.00,
+                        "wartosc_netto": 100.00,
+                        "stawka_vat": 23,
+                    }
+                ],
+            },
+        }
+
+        input_file = tmp_path / "invalid_nip.json"
+        with open(input_file, "w") as f:
+            json.dump(data, f)
+
+        output_file = tmp_path / "output.xml"
+
+        result = runner.invoke(cli, ["generate", "-i", str(input_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "Błąd walidacji danych faktury" in result.output
+        assert "sprzedawca -> nip" in result.output
 
     def test_generate_command_with_dodatkowe_opisy(self, tmp_path):
         """Test generate command with additional descriptions"""
@@ -235,7 +286,7 @@ class TestValidateCommand:
 
         assert result.exit_code == 0
         assert "✓ Plik" in result.output
-        assert "jest poprawnym XML" in result.output
+        assert "jest poprawny" in result.output
 
     def test_validate_command_invalid_xml(self, tmp_path):
         """Test validate command with invalid XML"""
@@ -248,7 +299,7 @@ class TestValidateCommand:
         result = runner.invoke(cli, ["validate", "-f", str(xml_file)])
 
         assert result.exit_code != 0
-        assert "✗ Błąd walidacji" in result.output
+        assert "zawiera błędy" in result.output or "Błąd walidacji" in result.output
 
     def test_validate_command_missing_file(self, tmp_path):
         """Test validate command with missing file"""
@@ -258,8 +309,8 @@ class TestValidateCommand:
 
         assert result.exit_code != 0
 
-    def test_validate_command_shows_root_element(self, faktura_ksef, tmp_path):
-        """Test that validate command shows root element"""
+    def test_validate_command_valid_structure(self, faktura_ksef, tmp_path):
+        """Test that validate command validates structure correctly"""
         from ksef_cli.generator import KSeFGenerator
 
         runner = CliRunner()
@@ -274,7 +325,7 @@ class TestValidateCommand:
         result = runner.invoke(cli, ["validate", "-f", str(xml_file)])
 
         assert result.exit_code == 0
-        assert "Element główny" in result.output
+        assert "jest poprawny" in result.output
 
 
 class TestInteractiveCommand:
@@ -527,6 +578,94 @@ class TestVisualizeCommand:
         output_file = tmp_path / "output.pdf"
 
         result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "✗ Błąd" in result.output
+
+
+class TestHtmlCommand:
+    """Tests for html command"""
+
+    def test_html_command_creates_file(self, faktura_ksef, tmp_path):
+        """Test that html command creates HTML file"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.html"
+
+        result = runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code == 0
+        assert output_file.exists()
+        assert "✓ Wizualizacja HTML wygenerowana" in result.output
+
+    def test_html_command_creates_valid_html(self, faktura_ksef, tmp_path):
+        """Test that html command creates valid HTML"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.html"
+
+        runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        with open(output_file, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        assert "<!DOCTYPE html>" in html_content
+        assert "FAKTURA VAT" in html_content
+        assert "SPRZEDAWCA" in html_content
+        assert "NABYWCA" in html_content
+
+    def test_html_command_renders_polish_characters(self, faktura_ksef, tmp_path):
+        """Test that html command renders Polish characters correctly"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.html"
+
+        runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        with open(output_file, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        # Check UTF-8 charset is declared for Polish character support
+        assert 'charset="UTF-8"' in html_content
+
+    def test_html_command_invalid_xml(self, tmp_path):
+        """Test html command with invalid XML"""
+        runner = CliRunner()
+
+        xml_file = tmp_path / "invalid.xml"
+        with open(xml_file, "w") as f:
+            f.write("< invalid xml >")
+
+        output_file = tmp_path / "output.html"
+
+        result = runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
 
         assert result.exit_code != 0
         assert "✗ Błąd" in result.output
