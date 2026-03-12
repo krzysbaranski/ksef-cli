@@ -329,7 +329,10 @@ class TestFakturaKSeF:
     def test_faktura_ksef_default_system_info(self, sprzedawca, nabywca, faktura):
         """Test default system info"""
         faktura_ksef = FakturaKSeF(sprzedawca=sprzedawca, nabywca=nabywca, faktura=faktura)
-        assert faktura_ksef.system_info == "KSeF CLI Generator"
+        assert (
+            faktura_ksef.system_info
+            == "KSeF CLI Generator https://github.com/krzysbaranski/ksef-cli"
+        )
 
     def test_faktura_ksef_custom_values(self, sprzedawca, nabywca, faktura):
         """Test KSeF invoice with custom values"""

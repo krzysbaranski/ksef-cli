@@ -65,4 +65,4 @@ class FakturaKSeF(BaseModel):
     nabywca: Podmiot
     faktura: Faktura
     prefiks_podatnika: str = "PL"
-    system_info: str = "KSeF CLI Generator"
+    system_info: str = "KSeF CLI Generator https://github.com/krzysbaranski/ksef-cli"

@@ -116,7 +116,7 @@ class TestKSeFGenerator:
         # Check SystemInfo
         system_info = naglowek.find("ns:SystemInfo", ns)
         assert system_info is not None
-        assert system_info.text == "KSeF CLI Generator"
+        assert system_info.text == "KSeF CLI Generator https://github.com/krzysbaranski/ksef-cli"
 
     def test_podmiot1_sprzedawca(self, faktura_ksef):
         """Test seller (Podmiot1) data"""
