@@ -39,8 +39,8 @@ class TestPodmiot:
 
     def test_podmiot_valid(self, adres_pl):
         """Test creating valid entity"""
-        podmiot = Podmiot(nip="1132347267", nazwa="Moja Firma", adres=adres_pl)
-        assert podmiot.nip == "1132347267"
+        podmiot = Podmiot(nip="5260250274", nazwa="Moja Firma", adres=adres_pl)
+        assert podmiot.nip == "5260250274"
         assert podmiot.nazwa == "Moja Firma"
         assert podmiot.adres == adres_pl
 

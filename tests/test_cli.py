@@ -85,7 +85,7 @@ class TestGenerateCommand:
         # Incomplete data
         incomplete_data = {
             "sprzedawca": {
-                "nip": "1132347267"
+                "nip": "5260250274"
                 # Missing nazwa and adres
             }
         }
@@ -155,7 +155,7 @@ class TestGenerateCommand:
 
         data = {
             "sprzedawca": {
-                "nip": "1132347267",
+                "nip": "5260250274",
                 "nazwa": "Test Firma",
                 "adres": {"kod_kraju": "PL", "adres_l1": "ul. Test 1"},
             },
@@ -209,7 +209,7 @@ class TestGenerateCommand:
 
         data = {
             "sprzedawca": {
-                "nip": "1132347267",
+                "nip": "5260250274",
                 "nazwa": "Test Firma",
                 "adres": {"kod_kraju": "PL", "adres_l1": "ul. Test 1"},
             },
@@ -337,7 +337,7 @@ class TestInteractiveCommand:
 
         # Prepare input for interactive prompts
         input_data = [
-            "1132347267",  # Sprzedawca NIP
+            "5260250274",  # Sprzedawca NIP
             "Moja Firma",  # Sprzedawca Nazwa
             "ul. Test 1",  # Sprzedawca Adres L1
             "",  # Sprzedawca Adres L2 (empty)
@@ -370,7 +370,7 @@ class TestInteractiveCommand:
         runner = CliRunner()
 
         input_data = [
-            "1132347267",
+            "5260250274",
             "Test Firma",
             "ul. Test 1",
             "",
@@ -410,7 +410,7 @@ class TestInteractiveCommand:
         runner = CliRunner()
 
         input_data = [
-            "1132347267",
+            "5260250274",
             "Test Firma",
             "ul. Test 1",
             "",

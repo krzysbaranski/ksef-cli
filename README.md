@@ -57,7 +57,7 @@ ksef-cli visualize -i faktura.xml -o faktura.pdf
 ```json
 {
   "sprzedawca": {
-    "nip": "1132347267",
+    "nip": "5260250274",
     "nazwa": "test 1",
     "adres": {
       "kod_kraju": "PL",

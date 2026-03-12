@@ -71,7 +71,7 @@ class TestKSeFPDFGenerator:
 
     def test_pdf_with_polish_characters(self, adres_pl_simple, tmp_path):
         """Test PDF generation with Polish characters"""
-        sprzedawca = Podmiot(nip="1132347267", nazwa="Firma Spółdzielnia", adres=adres_pl_simple)
+        sprzedawca = Podmiot(nip="5260250274", nazwa="Firma Spółdzielnia", adres=adres_pl_simple)
         nabywca = Podmiot(nip="9492107026", nazwa="Klient żółć", adres=adres_pl_simple)
         pozycja = PozycjaFaktury(
             nr=1,
@@ -236,7 +236,7 @@ class TestKSeFPDFGenerator:
 
     def test_pdf_with_single_address_line(self, adres_pl_simple, tmp_path):
         """Test PDF generation with address having only one line"""
-        sprzedawca = Podmiot(nip="1132347267", nazwa="Firma", adres=adres_pl_simple)
+        sprzedawca = Podmiot(nip="5260250274", nazwa="Firma", adres=adres_pl_simple)
         nabywca = Podmiot(nip="9492107026", nazwa="Klient", adres=adres_pl_simple)
         pozycja = PozycjaFaktury(
             nr=1,
@@ -268,7 +268,7 @@ class TestKSeFPDFGenerator:
 
     def test_pdf_with_two_address_lines(self, adres_pl, tmp_path):
         """Test PDF generation with address having two lines"""
-        sprzedawca = Podmiot(nip="1132347267", nazwa="Firma", adres=adres_pl)
+        sprzedawca = Podmiot(nip="5260250274", nazwa="Firma", adres=adres_pl)
         nabywca = Podmiot(nip="9492107026", nazwa="Klient", adres=adres_pl)
         pozycja = PozycjaFaktury(
             nr=1,

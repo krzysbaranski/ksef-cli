@@ -22,7 +22,7 @@ def adres_pl_simple():
 @pytest.fixture
 def sprzedawca(adres_pl):
     """Sample seller entity"""
-    return Podmiot(nip="1132347267", nazwa="Moja Firma Sp. z o.o.", adres=adres_pl)
+    return Podmiot(nip="5260250274", nazwa="Moja Firma Sp. z o.o.", adres=adres_pl)
 
 
 @pytest.fixture
@@ -101,7 +101,7 @@ def sample_invoice_json():
     """Sample invoice JSON data"""
     return {
         "sprzedawca": {
-            "nip": "1132347267",
+            "nip": "5260250274",
             "nazwa": "Moja Firma Sp. z o.o.",
             "adres": {
                 "kod_kraju": "PL",

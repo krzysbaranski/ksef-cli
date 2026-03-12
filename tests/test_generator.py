@@ -61,7 +61,7 @@ class TestKSeFGenerator:
 
     def test_xml_polish_characters(self, adres_pl_simple):
         """Test XML handles Polish characters correctly"""
-        sprzedawca = Podmiot(nip="1132347267", nazwa="Firma Spółdzielnia", adres=adres_pl_simple)
+        sprzedawca = Podmiot(nip="5260250274", nazwa="Firma Spółdzielnia", adres=adres_pl_simple)
         nabywca = Podmiot(nip="9492107026", nazwa="Klient żółć", adres=adres_pl_simple)
         pozycja = PozycjaFaktury(
             nr=1,
@@ -137,7 +137,7 @@ class TestKSeFGenerator:
         # Check NIP
         nip = podmiot1.find(".//ns:NIP", ns)
         assert nip is not None
-        assert nip.text == "1132347267"
+        assert nip.text == "5260250274"
 
         # Check Nazwa
         nazwa = podmiot1.find(".//ns:Nazwa", ns)
