@@ -139,15 +139,15 @@ class KSeFGenerator:
 
         # Suma netto
         p13_1 = etree.SubElement(fa, f"{{{self.NAMESPACE}}}P_13_1")
-        p13_1.text = str(sumy["netto"])
+        p13_1.text = f"{sumy['netto']:.2f}"
 
         # Suma VAT
         p14_1 = etree.SubElement(fa, f"{{{self.NAMESPACE}}}P_14_1")
-        p14_1.text = str(sumy["vat"])
+        p14_1.text = f"{sumy['vat']:.2f}"
 
         # Suma brutto
         p15 = etree.SubElement(fa, f"{{{self.NAMESPACE}}}P_15")
-        p15.text = str(sumy["brutto"])
+        p15.text = f"{sumy['brutto']:.2f}"
 
         # Adnotacje (zgodnie z przykładem)
         self._dodaj_adnotacje(fa)
@@ -214,10 +214,10 @@ class KSeFGenerator:
         p8b.text = str(pozycja.ilosc)
 
         p9a = etree.SubElement(wiersz, f"{{{self.NAMESPACE}}}P_9A")
-        p9a.text = str(pozycja.cena_netto)
+        p9a.text = f"{pozycja.cena_netto:.2f}"
 
         p11 = etree.SubElement(wiersz, f"{{{self.NAMESPACE}}}P_11")
-        p11.text = str(pozycja.wartosc_netto)
+        p11.text = f"{pozycja.wartosc_netto:.2f}"
 
         p12 = etree.SubElement(wiersz, f"{{{self.NAMESPACE}}}P_12")
         p12.text = str(pozycja.stawka_vat)

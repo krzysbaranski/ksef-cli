@@ -291,6 +291,60 @@ class TestKSeFGenerator:
         assert p15 is not None
         assert float(p15.text) == 3075.00
 
+    def test_faktura_sums_two_decimal_places(self, sprzedawca, nabywca):
+        """Test that money sums are always formatted with 2 decimal places"""
+        pozycja = PozycjaFaktury(
+            nr=1,
+            nazwa="Usługa",
+            jm="szt",
+            ilosc=1.0,
+            cena_netto=111.7,
+            wartosc_netto=111.7,
+            stawka_vat=23,
+        )
+        faktura = Faktura(
+            numer="FV/001",
+            data_wystawienia=date(2026, 2, 1),
+            miejsce_wystawienia="Warszawa",
+            data_sprzedazy=date(2026, 2, 1),
+            pozycje=[pozycja],
+        )
+        faktura_ksef = FakturaKSeF(sprzedawca=sprzedawca, nabywca=nabywca, faktura=faktura)
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        root = etree.fromstring(xml.encode("utf-8"))
+        ns = {"ns": generator.NAMESPACE}
+
+        fa = root.find(".//ns:Fa", ns)
+
+        # Net sum should be formatted with 2 decimal places
+        p13_1 = fa.find("ns:P_13_1", ns)
+        assert p13_1 is not None
+        assert p13_1.text == "111.70"
+
+        # VAT sum
+        p14_1 = fa.find("ns:P_14_1", ns)
+        assert p14_1 is not None
+        assert p14_1.text == "25.69"
+
+        # Gross sum
+        p15 = fa.find("ns:P_15", ns)
+        assert p15 is not None
+        assert p15.text == "137.39"
+
+        # Line item price
+        wiersz = root.find(".//ns:FaWiersz", ns)
+        p9a = wiersz.find("ns:P_9A", ns)
+        assert p9a is not None
+        assert p9a.text == "111.70"
+
+        # Line item net value
+        p11 = wiersz.find("ns:P_11", ns)
+        assert p11 is not None
+        assert p11.text == "111.70"
+
     def test_faktura_wiersz_single(self, sprzedawca, nabywca):
         """Test single invoice line"""
         pozycja = PozycjaFaktury(
