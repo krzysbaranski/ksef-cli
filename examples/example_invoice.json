@@ -48,6 +48,7 @@
         "klucz": "Uwagi",
         "wartosc": "Termin płatności: 14 dni"
       }
-    ]
+    ],
+    "stopka_faktury": "SZCZEGÓŁOWE ZESTAWIENIE GODZIN:\n───────────────────────────────\n\nData           Godziny\n───────────────────────────────\n2026-03-02        8 h\n2026-03-03        8 h\n2026-03-04        8 h\n2026-03-05        8 h\n2026-03-31        8 h"
   }
 }

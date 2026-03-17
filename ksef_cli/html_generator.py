@@ -233,6 +233,15 @@ class KSeFHTMLGenerator:
             color: #666;
         }
         .adnotacja { margin: 5px 0; padding: 5px; background: #fafafa; }
+        .stopka-faktury {
+            font-family: 'DejaVu Sans Mono', 'Courier New', monospace;
+            font-size: 11px;
+            white-space: pre;
+            margin: 0;
+            padding: 5px 0;
+            background: none;
+            border: none;
+        }
         @media print {
             body { background: white; padding: 0; }
             .faktura { box-shadow: none; max-width: none; }
@@ -646,17 +655,17 @@ class KSeFHTMLGenerator:
         if stopka is None:
             return ""
 
-        informacje = self._get_text(stopka, "ns:Informacje", "")
+        stopka_faktury = self._get_text(stopka, "ns:Informacje/ns:StopkaFaktury", "")
         rejestry = self._get_text(stopka, "ns:Rejestry/ns:KRS", "")
 
-        if not informacje and not rejestry:
+        if not stopka_faktury and not rejestry:
             return ""
 
         html = '<div class="section">\n    <div class="section-header">INFORMACJE DODATKOWE</div>'
         if rejestry:
             html += f'\n    <div class="info-row"><span class="label">KRS:</span> {rejestry}</div>'
-        if informacje:
-            html += f'\n    <div class="info-row">{informacje}</div>'
+        if stopka_faktury:
+            html += f'\n    <div class="info-row"><pre class="stopka-faktury">{stopka_faktury}</pre></div>'
         html += "\n</div>"
         return html
 

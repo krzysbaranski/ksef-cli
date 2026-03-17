@@ -47,6 +47,7 @@ class Faktura(BaseModel):
     pozycje: List[PozycjaFaktury]
     forma_platnosci: str = "6"
     dodatkowe_opisy: Optional[List[DodatkowyOpis]] = None
+    stopka_faktury: Optional[str] = None
 
     def oblicz_sumy(self):
         """Oblicza sumy netto i VAT"""

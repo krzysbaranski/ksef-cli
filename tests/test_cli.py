@@ -354,6 +354,7 @@ class TestInteractiveCommand:
             "100",  # Cena netto
             "23",  # Stawka VAT
             "n",  # Nie dodawaj kolejnej pozycji
+            "",  # Stopka faktury (opcjonalnie, pominięcie)
             str(tmp_path / "test_output.xml"),  # Nazwa pliku wyjściowego
         ]
 
@@ -387,6 +388,7 @@ class TestInteractiveCommand:
             "100",
             "23",
             "n",
+            "",  # Stopka faktury (opcjonalnie, pominięcie)
             str(tmp_path / "output.xml"),
         ]
 
@@ -433,6 +435,7 @@ class TestInteractiveCommand:
             "150",
             "23",
             "n",  # No more items
+            "",  # Stopka faktury (opcjonalnie, pominięcie)
             str(tmp_path / "output.xml"),
         ]
 
@@ -669,3 +672,52 @@ class TestHtmlCommand:
 
         assert result.exit_code != 0
         assert "✗ Błąd" in result.output
+
+    def test_html_command_renders_stopka_faktury(self, sprzedawca, nabywca, tmp_path):
+        """Test that html command renders StopkaFaktury correctly"""
+        from datetime import date
+
+        from ksef_cli.generator import KSeFGenerator
+        from ksef_cli.models import Faktura, FakturaKSeF, PozycjaFaktury
+
+        runner = CliRunner()
+
+        pozycja = PozycjaFaktury(
+            nr=1,
+            nazwa="Usługa",
+            jm="szt",
+            ilosc=1.0,
+            cena_netto=100.00,
+            wartosc_netto=100.00,
+            stawka_vat=23,
+        )
+        tekst_stopki = "ZESTAWIENIE:\nData  Godziny\n2026-01-01  8 h"
+        faktura = Faktura(
+            numer="FV/001",
+            data_wystawienia=date(2026, 2, 1),
+            miejsce_wystawienia="Warszawa",
+            data_sprzedazy=date(2026, 2, 1),
+            pozycje=[pozycja],
+            stopka_faktury=tekst_stopki,
+        )
+        faktura_ksef = FakturaKSeF(sprzedawca=sprzedawca, nabywca=nabywca, faktura=faktura)
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w", encoding="utf-8") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.html"
+
+        result = runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code == 0
+
+        with open(output_file, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        assert "INFORMACJE DODATKOWE" in html_content
+        assert "stopka-faktury" in html_content
+        assert "ZESTAWIENIE:" in html_content

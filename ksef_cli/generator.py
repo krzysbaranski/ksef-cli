@@ -31,6 +31,10 @@ class KSeFGenerator:
         # Faktura
         self._dodaj_fakture(root, dane.faktura)
 
+        # Stopka (opcjonalna)
+        if dane.faktura.stopka_faktury:
+            self._dodaj_stopke(root, dane.faktura.stopka_faktury)
+
         # Formatowanie XML
         xml_string: bytes = etree.tostring(
             root, pretty_print=True, xml_declaration=True, encoding="utf-8"
@@ -217,3 +221,10 @@ class KSeFGenerator:
 
         p12 = etree.SubElement(wiersz, f"{{{self.NAMESPACE}}}P_12")
         p12.text = str(pozycja.stawka_vat)
+
+    def _dodaj_stopke(self, root, stopka_faktury: str):
+        """Dodaje stopkę faktury (Stopka)"""
+        stopka = etree.SubElement(root, f"{{{self.NAMESPACE}}}Stopka")
+        informacje = etree.SubElement(stopka, f"{{{self.NAMESPACE}}}Informacje")
+        stopka_elem = etree.SubElement(informacje, f"{{{self.NAMESPACE}}}StopkaFaktury")
+        stopka_elem.text = stopka_faktury

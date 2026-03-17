@@ -144,6 +144,14 @@ def interactive():
             if not click.confirm("Dodać kolejną pozycję?", default=False):
                 break
 
+        # Stopka faktury (opcjonalna)
+        stopka_faktury_input = click.prompt(
+            "\nStopka faktury (opcjonalnie, naciśnij Enter aby pominąć)",
+            default="",
+            show_default=False,
+        )
+        stopka_faktury = stopka_faktury_input if stopka_faktury_input else None
+
         # Stwórz model
         faktura_ksef = FakturaKSeF(
             sprzedawca=Podmiot(
@@ -163,6 +171,7 @@ def interactive():
                 miejsce_wystawienia=miejsce,
                 data_sprzedazy=data_sprz.date(),
                 pozycje=pozycje,
+                stopka_faktury=stopka_faktury,
             ),
         )
 
