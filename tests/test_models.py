@@ -211,6 +211,30 @@ class TestFaktura:
         )
         assert faktura.forma_platnosci == "6"
 
+    def test_faktura_stopka_faktury_default_none(self, pozycja_faktury):
+        """Test that stopka_faktury defaults to None"""
+        faktura = Faktura(
+            numer="FV/001",
+            data_wystawienia=date(2026, 2, 1),
+            miejsce_wystawienia="Warszawa",
+            data_sprzedazy=date(2026, 2, 1),
+            pozycje=[pozycja_faktury],
+        )
+        assert faktura.stopka_faktury is None
+
+    def test_faktura_stopka_faktury_set(self, pozycja_faktury):
+        """Test setting stopka_faktury"""
+        tekst = "ZESTAWIENIE:\nData\n2026-01-01"
+        faktura = Faktura(
+            numer="FV/001",
+            data_wystawienia=date(2026, 2, 1),
+            miejsce_wystawienia="Warszawa",
+            data_sprzedazy=date(2026, 2, 1),
+            pozycje=[pozycja_faktury],
+            stopka_faktury=tekst,
+        )
+        assert faktura.stopka_faktury == tekst
+
     def test_oblicz_sumy_single_item(self):
         """Test sum calculation with single item"""
         pozycja = PozycjaFaktury(

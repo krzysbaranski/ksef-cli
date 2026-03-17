@@ -476,3 +476,52 @@ class TestKSeFGenerator:
 
             waluta = root.find(".//ns:KodWaluty", ns)
             assert waluta.text == currency
+
+    def test_stopka_faktury_generated(self, sprzedawca, nabywca):
+        """Test that StopkaFaktury is included in generated XML"""
+        pozycja = PozycjaFaktury(
+            nr=1,
+            nazwa="Usługa",
+            jm="szt",
+            ilosc=1.0,
+            cena_netto=100.00,
+            wartosc_netto=100.00,
+            stawka_vat=23,
+        )
+        tekst_stopki = "ZESTAWIENIE:\nData  Godziny\n2026-01-01  8 h"
+        faktura = Faktura(
+            numer="FV/001",
+            data_wystawienia=date(2026, 2, 1),
+            miejsce_wystawienia="Warszawa",
+            data_sprzedazy=date(2026, 2, 1),
+            pozycje=[pozycja],
+            stopka_faktury=tekst_stopki,
+        )
+        faktura_ksef = FakturaKSeF(sprzedawca=sprzedawca, nabywca=nabywca, faktura=faktura)
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        root = etree.fromstring(xml.encode("utf-8"))
+        ns = {"ns": generator.NAMESPACE}
+
+        stopka = root.find(".//ns:Stopka", ns)
+        assert stopka is not None
+
+        informacje = stopka.find("ns:Informacje", ns)
+        assert informacje is not None
+
+        stopka_elem = informacje.find("ns:StopkaFaktury", ns)
+        assert stopka_elem is not None
+        assert stopka_elem.text == tekst_stopki
+
+    def test_stopka_faktury_not_generated_when_none(self, faktura_ksef):
+        """Test that Stopka element is absent when stopka_faktury is None"""
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        root = etree.fromstring(xml.encode("utf-8"))
+        ns = {"ns": generator.NAMESPACE}
+
+        stopka = root.find(".//ns:Stopka", ns)
+        assert stopka is None
