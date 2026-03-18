@@ -272,7 +272,14 @@ def validate(xml_file, schema_path):
     type=click.Path(),
     help="Plik wyjściowy PDF",
 )
-def visualize(xml_file, output_file):
+@click.option(
+    "-k",
+    "--ksef-number",
+    "numer_ksef",
+    default=None,
+    help="Numer KSeF faktury (do wygenerowania kodu QR weryfikacji)",
+)
+def visualize(xml_file, output_file, numer_ksef):
     """Generuje wizualizację PDF faktury KSeF z pliku XML"""
     try:
         from lxml import etree
@@ -280,7 +287,7 @@ def visualize(xml_file, output_file):
         from .pdf_generator import KSeFPDFGenerator
 
         generator = KSeFPDFGenerator()
-        generator.generuj_z_pliku(xml_file, output_file)
+        generator.generuj_z_pliku(xml_file, output_file, numer_ksef)
 
         click.echo(f"✓ Wizualizacja PDF wygenerowana: {output_file}")
 
@@ -316,7 +323,14 @@ def visualize(xml_file, output_file):
     type=click.Path(),
     help="Plik wyjściowy HTML",
 )
-def html(xml_file, output_file):
+@click.option(
+    "-k",
+    "--ksef-number",
+    "numer_ksef",
+    default=None,
+    help="Numer KSeF faktury (do wygenerowania kodu QR weryfikacji)",
+)
+def html(xml_file, output_file, numer_ksef):
     """Generuje wizualizację HTML faktury KSeF z pliku XML"""
     try:
         from lxml import etree
@@ -324,7 +338,7 @@ def html(xml_file, output_file):
         from .html_generator import KSeFHTMLGenerator
 
         generator = KSeFHTMLGenerator()
-        html_content = generator.generuj_html_z_pliku(xml_file)
+        html_content = generator.generuj_html_z_pliku(xml_file, numer_ksef)
 
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(html_content)
