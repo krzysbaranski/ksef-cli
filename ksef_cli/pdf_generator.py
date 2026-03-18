@@ -118,7 +118,9 @@ class KSeFPDFGenerator:
         """Check if font is registered"""
         return font_name in pdfmetrics.getRegisteredFontNames()
 
-    def generuj_z_xml(self, xml_content: str, output_path: str, numer_ksef: Optional[str] = None) -> str:
+    def generuj_z_xml(
+        self, xml_content: str, output_path: str, numer_ksef: Optional[str] = None
+    ) -> str:
         """
         Generuje PDF z zawartości XML faktury KSeF.
 
@@ -133,7 +135,9 @@ class KSeFPDFGenerator:
         root = etree.fromstring(xml_content.encode("utf-8"))
         return self._generuj_pdf(root, output_path, numer_ksef)
 
-    def generuj_z_pliku(self, xml_path: str, output_path: str, numer_ksef: Optional[str] = None) -> str:
+    def generuj_z_pliku(
+        self, xml_path: str, output_path: str, numer_ksef: Optional[str] = None
+    ) -> str:
         """
         Generuje PDF z pliku XML faktury KSeF.
 
@@ -149,7 +153,9 @@ class KSeFPDFGenerator:
             tree = etree.parse(f)
         return self._generuj_pdf(tree.getroot(), output_path, numer_ksef)
 
-    def _generuj_pdf(self, root: etree._Element, output_path: str, numer_ksef: Optional[str] = None) -> str:
+    def _generuj_pdf(
+        self, root: etree._Element, output_path: str, numer_ksef: Optional[str] = None
+    ) -> str:
         """Generuje PDF z elementu XML"""
         ns = {"ns": self.NAMESPACE}
 
