@@ -1,5 +1,6 @@
 """PDF generator for KSeF invoices."""
 
+import io
 import os
 from typing import Optional
 
@@ -10,7 +11,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
 class KSeFPDFGenerator:
@@ -117,36 +118,44 @@ class KSeFPDFGenerator:
         """Check if font is registered"""
         return font_name in pdfmetrics.getRegisteredFontNames()
 
-    def generuj_z_xml(self, xml_content: str, output_path: str) -> str:
+    def generuj_z_xml(
+        self, xml_content: str, output_path: str, numer_ksef: Optional[str] = None
+    ) -> str:
         """
         Generuje PDF z zawartości XML faktury KSeF.
 
         Args:
             xml_content: Zawartość XML faktury
             output_path: Ścieżka do pliku wyjściowego PDF
+            numer_ksef: Opcjonalny numer KSeF do wygenerowania kodu QR weryfikacji
 
         Returns:
             Ścieżka do wygenerowanego pliku PDF
         """
         root = etree.fromstring(xml_content.encode("utf-8"))
-        return self._generuj_pdf(root, output_path)
+        return self._generuj_pdf(root, output_path, numer_ksef)
 
-    def generuj_z_pliku(self, xml_path: str, output_path: str) -> str:
+    def generuj_z_pliku(
+        self, xml_path: str, output_path: str, numer_ksef: Optional[str] = None
+    ) -> str:
         """
         Generuje PDF z pliku XML faktury KSeF.
 
         Args:
             xml_path: Ścieżka do pliku XML
             output_path: Ścieżka do pliku wyjściowego PDF
+            numer_ksef: Opcjonalny numer KSeF do wygenerowania kodu QR weryfikacji
 
         Returns:
             Ścieżka do wygenerowanego pliku PDF
         """
         with open(xml_path, "rb") as f:
             tree = etree.parse(f)
-        return self._generuj_pdf(tree.getroot(), output_path)
+        return self._generuj_pdf(tree.getroot(), output_path, numer_ksef)
 
-    def _generuj_pdf(self, root: etree._Element, output_path: str) -> str:
+    def _generuj_pdf(
+        self, root: etree._Element, output_path: str, numer_ksef: Optional[str] = None
+    ) -> str:
         """Generuje PDF z elementu XML"""
         ns = {"ns": self.NAMESPACE}
 
@@ -190,6 +199,11 @@ class KSeFPDFGenerator:
         if dodatkowe_opisy:
             elements.append(Spacer(1, 4 * mm))
             elements.extend(dodatkowe_opisy)
+
+        # Sekcja weryfikacji KSeF (gdy podano numer KSeF)
+        if numer_ksef:
+            elements.append(Spacer(1, 4 * mm))
+            elements.extend(self._generuj_weryfikacja_ksef(numer_ksef))
 
         doc.build(elements)
         return output_path
@@ -444,5 +458,53 @@ class KSeFPDFGenerator:
                 )
             )
             elements.append(table)
+
+        return elements
+
+    def _generuj_weryfikacja_ksef(self, numer_ksef: str) -> list:
+        """Generuje sekcję weryfikacji KSeF z kodem QR."""
+        from .qr_generator import generate_qr_code_png, get_verification_url
+
+        elements = []
+        elements.append(Paragraph("WERYFIKACJA FAKTURY W KSeF", self.styles["SectionHeader"]))
+
+        url = get_verification_url(numer_ksef)
+        qr_png = generate_qr_code_png(url)
+
+        qr_image = Image(io.BytesIO(qr_png), width=30 * mm, height=30 * mm)
+
+        info_data = [
+            [qr_image, Paragraph(f"<b>Numer KSeF:</b> {numer_ksef}", self.styles["FieldValue"])],
+            [
+                "",
+                Paragraph(
+                    f"<b>Link weryfikacyjny:</b><br/>{url}",
+                    self.styles["FieldValue"],
+                ),
+            ],
+            [
+                "",
+                Paragraph(
+                    "Zeskanuj kod QR lub otwórz link, aby zweryfikować fakturę w systemie KSeF.",
+                    self.styles["FieldValue"],
+                ),
+            ],
+        ]
+
+        table = Table(info_data, colWidths=[35 * mm, 145 * mm])
+        table.setStyle(
+            TableStyle(
+                [
+                    ("SPAN", (0, 0), (0, -1)),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.black),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightyellow),
+                ]
+            )
+        )
+        elements.append(table)
 
         return elements

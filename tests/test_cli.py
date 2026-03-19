@@ -721,3 +721,91 @@ class TestHtmlCommand:
         assert "INFORMACJE DODATKOWE" in html_content
         assert "stopka-faktury" in html_content
         assert "ZESTAWIENIE:" in html_content
+
+    def test_html_command_with_ksef_number(self, faktura_ksef, tmp_path):
+        """Test that html command includes QR code and verification link when --ksef-number is given"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w", encoding="utf-8") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.html"
+        numer_ksef = "5260250274-20230215-ABC123456789-AB"
+
+        result = runner.invoke(
+            cli, ["html", "-i", str(xml_file), "-o", str(output_file), "-k", numer_ksef]
+        )
+
+        assert result.exit_code == 0
+
+        with open(output_file, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        assert "WERYFIKACJA FAKTURY W KSeF" in html_content
+        assert numer_ksef in html_content
+        assert "https://ksef.podatki.gov.pl/web/verify/" in html_content
+        assert "data:image/png;base64," in html_content
+
+    def test_html_command_without_ksef_number_no_qr(self, faktura_ksef, tmp_path):
+        """Test that html command does not include QR section when --ksef-number is not given"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w", encoding="utf-8") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.html"
+
+        result = runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code == 0
+
+        with open(output_file, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        assert "WERYFIKACJA FAKTURY W KSeF" not in html_content
+        assert "data:image/png;base64," not in html_content
+
+
+class TestVisualizeCommandWithKSeFNumber:
+    """Tests for visualize command with --ksef-number option"""
+
+    def test_visualize_command_with_ksef_number(self, faktura_ksef, tmp_path):
+        """Test that visualize command includes QR code section when --ksef-number is given"""
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w", encoding="utf-8") as f:
+            f.write(xml)
+
+        output_file = tmp_path / "output.pdf"
+        numer_ksef = "5260250274-20230215-ABC123456789-AB"
+
+        result = runner.invoke(
+            cli, ["visualize", "-i", str(xml_file), "-o", str(output_file), "-k", numer_ksef]
+        )
+
+        assert result.exit_code == 0
+        assert output_file.exists()
+        assert "✓ Wizualizacja PDF wygenerowana" in result.output
+
+        # Check PDF header
+        with open(output_file, "rb") as f:
+            header = f.read(8)
+            assert header.startswith(b"%PDF")

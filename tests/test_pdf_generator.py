@@ -297,3 +297,42 @@ class TestKSeFPDFGenerator:
 
         assert os.path.exists(result)
         assert os.path.getsize(result) > 0
+
+    def test_pdf_with_ksef_number(self, faktura_ksef, tmp_path):
+        """Test PDF generation with KSeF number includes QR code section"""
+        xml_generator = KSeFGenerator()
+        xml_content = xml_generator.generuj(faktura_ksef)
+
+        pdf_generator = KSeFPDFGenerator()
+        output_path = str(tmp_path / "output_ksef.pdf")
+        numer_ksef = "5260250274-20230215-ABC123456789-AB"
+
+        result = pdf_generator.generuj_z_xml(xml_content, output_path, numer_ksef)
+
+        assert result == output_path
+        assert os.path.exists(output_path)
+        assert os.path.getsize(output_path) > 0
+
+        # PDF with QR code should be larger than without
+        output_path_no_qr = str(tmp_path / "output_no_qr.pdf")
+        pdf_generator.generuj_z_xml(xml_content, output_path_no_qr)
+        assert os.path.getsize(output_path) > os.path.getsize(output_path_no_qr)
+
+    def test_pdf_with_ksef_number_from_file(self, faktura_ksef, tmp_path):
+        """Test PDF generation from file with KSeF number"""
+        xml_generator = KSeFGenerator()
+        xml_content = xml_generator.generuj(faktura_ksef)
+
+        xml_path = str(tmp_path / "invoice.xml")
+        with open(xml_path, "w", encoding="utf-8") as f:
+            f.write(xml_content)
+
+        pdf_generator = KSeFPDFGenerator()
+        output_path = str(tmp_path / "output.pdf")
+        numer_ksef = "5260250274-20230215-TEST999-ZZ"
+
+        result = pdf_generator.generuj_z_pliku(xml_path, output_path, numer_ksef)
+
+        assert result == output_path
+        assert os.path.exists(output_path)
+        assert os.path.getsize(output_path) > 0

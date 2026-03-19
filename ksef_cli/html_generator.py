@@ -39,32 +39,34 @@ class KSeFHTMLGenerator:
     def __init__(self):
         self._ns = {"ns": self.NAMESPACE}
 
-    def generuj_html(self, xml_content: str) -> str:
+    def generuj_html(self, xml_content: str, numer_ksef: Optional[str] = None) -> str:
         """
         Generuje HTML z zawartości XML faktury KSeF.
 
         Args:
             xml_content: Zawartość XML faktury
+            numer_ksef: Opcjonalny numer KSeF do wygenerowania kodu QR weryfikacji
 
         Returns:
             Zawartość HTML
         """
         root = etree.fromstring(xml_content.encode("utf-8"))
-        return self._generuj_html(root)
+        return self._generuj_html(root, numer_ksef)
 
-    def generuj_html_z_pliku(self, xml_path: str) -> str:
+    def generuj_html_z_pliku(self, xml_path: str, numer_ksef: Optional[str] = None) -> str:
         """
         Generuje HTML z pliku XML faktury KSeF.
 
         Args:
             xml_path: Ścieżka do pliku XML
+            numer_ksef: Opcjonalny numer KSeF do wygenerowania kodu QR weryfikacji
 
         Returns:
             Zawartość HTML
         """
         with open(xml_path, "rb") as f:
             tree = etree.parse(f)
-        return self._generuj_html(tree.getroot())
+        return self._generuj_html(tree.getroot(), numer_ksef)
 
     def _get_text(
         self, root: etree._Element, xpath: str, default: Optional[str] = None
@@ -73,7 +75,7 @@ class KSeFHTMLGenerator:
         elem = root.find(xpath, self._ns)
         return elem.text if elem is not None and elem.text else default
 
-    def _generuj_html(self, root: etree._Element) -> str:
+    def _generuj_html(self, root: etree._Element, numer_ksef: Optional[str] = None) -> str:
         """Generuje kompletny dokument HTML."""
         html_parts: List[str] = []
 
@@ -127,6 +129,10 @@ class KSeFHTMLGenerator:
 
         # Footer
         html_parts.append(self._generuj_stopka(root))
+
+        # KSeF verification QR code (when KSeF number is provided)
+        if numer_ksef:
+            html_parts.append(self._generuj_weryfikacja_ksef(numer_ksef))
 
         # System info
         html_parts.append(self._generuj_system_info(root))
@@ -668,6 +674,35 @@ class KSeFHTMLGenerator:
             html += f'\n    <div class="info-row"><pre class="stopka-faktury">{stopka_faktury}</pre></div>'
         html += "\n</div>"
         return html
+
+    def _generuj_weryfikacja_ksef(self, numer_ksef: str) -> str:
+        """Generuje sekcję weryfikacji KSeF z kodem QR."""
+        from .qr_generator import generate_qr_code_base64, get_verification_url
+
+        url = get_verification_url(numer_ksef)
+        qr_base64 = generate_qr_code_base64(url)
+
+        return f"""<div class="section ksef-weryfikacja">
+    <div class="section-header">WERYFIKACJA FAKTURY W KSeF</div>
+    <div style="display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap;">
+        <div>
+            <img src="data:image/png;base64,{qr_base64}" alt="Kod QR weryfikacji KSeF"
+                 style="width: 120px; height: 120px; border: 1px solid #ccc;">
+        </div>
+        <div>
+            <div class="info-row">
+                <span class="label">Numer KSeF:</span> <b>{numer_ksef}</b>
+            </div>
+            <div class="info-row">
+                <span class="label">Link weryfikacyjny:</span>
+                <a href="{url}" target="_blank">{url}</a>
+            </div>
+            <div style="margin-top: 8px; font-size: 11px; color: #555;">
+                Zeskanuj kod QR lub kliknij link, aby zweryfikować fakturę w systemie KSeF.
+            </div>
+        </div>
+    </div>
+</div>"""
 
     def _generuj_system_info(self, root: etree._Element) -> str:
         """Generuje informacje systemowe."""
