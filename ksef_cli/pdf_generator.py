@@ -430,7 +430,7 @@ class KSeFPDFGenerator:
 
     def _generuj_dodatkowe_opisy(self, root: etree._Element, ns: dict) -> list:
         """Generuje sekcję dodatkowych opisów (DodatkowyOpis)"""
-        elements = []
+        elements: list = []
 
         dodatkowe_opisy = root.findall(".//ns:Fa/ns:DodatkowyOpis", ns)
         if not dodatkowe_opisy:

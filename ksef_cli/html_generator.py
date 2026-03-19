@@ -286,7 +286,7 @@ class KSeFHTMLGenerator:
     def _generuj_tytul(self, root: etree._Element) -> str:
         """Generuje tytuł faktury."""
         numer = self._get_text(root, ".//ns:Fa/ns:P_2", "-")
-        rodzaj_kod = self._get_text(root, ".//ns:Fa/ns:RodzajFaktury", "VAT")
+        rodzaj_kod = self._get_text(root, ".//ns:Fa/ns:RodzajFaktury", "VAT") or "VAT"
         rodzaj_nazwa = self.RODZAJ_FAKTURY.get(rodzaj_kod, "Faktura")
 
         return f"""<div class="tytul">
@@ -352,11 +352,11 @@ class KSeFHTMLGenerator:
         nabywca_tel = self._get_text(root, ".//ns:Podmiot2//ns:DaneKontaktowe/ns:Telefon", "")
         nabywca_nr_klienta = self._get_text(root, ".//ns:Podmiot2/ns:NrKlienta", "")
 
-        sprzedawca_adres = sprzedawca_adres1
+        sprzedawca_adres = sprzedawca_adres1 or ""
         if sprzedawca_adres2:
             sprzedawca_adres += f", {sprzedawca_adres2}"
 
-        nabywca_adres = nabywca_adres1
+        nabywca_adres = nabywca_adres1 or ""
         if nabywca_adres2:
             nabywca_adres += f", {nabywca_adres2}"
 
@@ -417,7 +417,7 @@ class KSeFHTMLGenerator:
             nazwa = self._get_text(podmiot, ".//ns:Nazwa", "")
             rola = self._get_text(podmiot, ".//ns:Rola", "")
 
-            html += f'\n    <div style="margin: 10px 0; padding: 5px; background: #fafafa;">'
+            html += '\n    <div style="margin: 10px 0; padding: 5px; background: #fafafa;">'
             html += f"\n        <b>Podmiot {i}</b>"
             if rola:
                 html += f" - Rola: {rola}"
