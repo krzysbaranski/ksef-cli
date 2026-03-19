@@ -360,5 +360,77 @@ def html(xml_file, output_file, numer_ksef):
         raise click.Abort()
 
 
+@cli.command("list-invoices")
+@click.option(
+    "-n",
+    "--nip",
+    required=True,
+    help="NIP firmy (10 cyfr)",
+)
+@click.option(
+    "-t",
+    "--token",
+    required=True,
+    help="Token autoryzacyjny KSeF",
+)
+@click.option(
+    "--date-from",
+    "date_from",
+    required=True,
+    help="Data początkowa (ISO-8601, np. 2023-01-01T00:00:00.000Z)",
+)
+@click.option(
+    "--date-to",
+    "date_to",
+    required=True,
+    help="Data końcowa (ISO-8601, np. 2023-12-31T23:59:59.999Z)",
+)
+@click.option(
+    "--test",
+    "use_test_env",
+    is_flag=True,
+    default=False,
+    help="Użyj środowiska testowego KSeF",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_file",
+    default=None,
+    type=click.Path(),
+    help="Plik wyjściowy JSON (domyślnie: wyświetla na ekranie)",
+)
+def list_invoices(nip, token, date_from, date_to, use_test_env, output_file):
+    """Pobiera listę faktur z API KSeF (autoryzacja tokenem)"""
+    from .ksef_api import KSeFAPIError, KSeFAuthError, KSeFClient
+
+    try:
+        client = KSeFClient(nip=nip, token=token, test=use_test_env)
+        invoices = client.list_invoices(date_from=date_from, date_to=date_to)
+
+        result = json.dumps(invoices, ensure_ascii=False, indent=2)
+
+        if output_file:
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write(result)
+            click.echo(f"✓ Lista faktur zapisana do: {output_file} ({len(invoices)} faktur)")
+        else:
+            click.echo(result)
+            click.echo(f"\n✓ Pobrano {len(invoices)} faktur", err=True)
+
+    except KSeFAuthError as e:
+        click.echo(f"✗ Błąd autoryzacji KSeF: {e}", err=True)
+        raise click.Abort()
+    except KSeFAPIError as e:
+        click.echo(f"✗ Błąd API KSeF: {e}", err=True)
+        raise click.Abort()
+    except OSError as e:
+        click.echo(f"✗ Błąd zapisu pliku '{output_file}': {e.strerror}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"✗ Nieoczekiwany błąd: {type(e).__name__}: {e}", err=True)
+        raise click.Abort()
+
+
 if __name__ == "__main__":
     cli()
