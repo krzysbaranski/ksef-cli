@@ -381,7 +381,7 @@ class TestListInvoicesCLI:
 
         from ksef_cli.cli import cli
 
-        runner = CliRunner(mix_stderr=False)
+        runner = CliRunner()
         with patch("urllib.request.urlopen", side_effect=self._mock_all()):
             result = runner.invoke(
                 cli,
@@ -399,7 +399,9 @@ class TestListInvoicesCLI:
             )
 
         assert result.exit_code == 0
-        parsed = json.loads(result.output)
+        # Extract the JSON array from stdout (stderr may be mixed in by Click)
+        json_end = result.output.rfind("]") + 1
+        parsed = json.loads(result.output[:json_end])
         assert len(parsed) == 2
 
     def test_list_invoices_saves_to_file(self, tmp_path):
