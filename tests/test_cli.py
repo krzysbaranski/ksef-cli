@@ -943,24 +943,24 @@ class TestInteractiveCommandExceptionHandlers:
 
         input_data = "\n".join(
             [
-                "5260250274",
-                "Moja Firma",
-                "ul. Testowa 1",
-                "",
-                "9492107026",
-                "Klient",
-                "ul. Klienta 2",
-                "",
-                "FV/001",
-                "2026-02-01",
-                "Warszawa",
-                "2026-02-01",
-                "1",
-                "Usługa",
-                "szt",
-                "1",
-                "100.00",
-                str(tmp_path / "output.xml"),
+                "5260250274",  # sprzedawca NIP
+                "Moja Firma",  # sprzedawca Nazwa
+                "ul. Testowa 1",  # sprzedawca Adres (linia 1)
+                "",  # sprzedawca Adres (linia 2) – optional, default=""
+                "9492107026",  # nabywca NIP (no adres_l2 prompt for nabywca)
+                "Klient",  # nabywca Nazwa
+                "ul. Klienta 2",  # nabywca Adres (linia 1)
+                "FV/001",  # Numer faktury
+                "2026-02-01",  # Data wystawienia
+                "Warszawa",  # Miejsce wystawienia
+                "2026-02-01",  # Data sprzedaży
+                "Usługa",  # Nazwa pozycji (item nr is auto-computed)
+                "szt",  # Jednostka miary
+                "1",  # Ilość
+                "100.00",  # Cena netto
+                "23",  # Stawka VAT
+                "N",  # Dodać kolejną pozycję? (No)
+                "",  # Stopka faktury (optional)
             ]
         )
 
@@ -1020,9 +1020,7 @@ class TestVisualizeCommandExceptionHandlers:
 
         output_file = tmp_path / "output.pdf"
 
-        result = runner.invoke(
-            cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)]
-        )
+        result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
 
         assert result.exit_code != 0
         assert "Błąd" in result.output
@@ -1048,9 +1046,7 @@ class TestVisualizeCommandExceptionHandlers:
 
         output_file = tmp_path / "output.pdf"
 
-        result = runner.invoke(
-            cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)]
-        )
+        result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
 
         assert result.exit_code != 0
         assert "Błąd generowania PDF" in result.output
@@ -1072,9 +1068,7 @@ class TestHtmlCommandExceptionHandlers:
         def raise_not_found(*args, **kwargs):
             raise FileNotFoundError("file not found")
 
-        monkeypatch.setattr(
-            html_mod.KSeFHTMLGenerator, "generuj_html_z_pliku", raise_not_found
-        )
+        monkeypatch.setattr(html_mod.KSeFHTMLGenerator, "generuj_html_z_pliku", raise_not_found)
 
         output_file = tmp_path / "output.html"
 
@@ -1102,9 +1096,7 @@ class TestHtmlCommandExceptionHandlers:
             e.strerror = "permission denied"
             raise e
 
-        monkeypatch.setattr(
-            html_mod.KSeFHTMLGenerator, "generuj_html_z_pliku", raise_oserror
-        )
+        monkeypatch.setattr(html_mod.KSeFHTMLGenerator, "generuj_html_z_pliku", raise_oserror)
 
         output_file = tmp_path / "output.html"
 
@@ -1130,9 +1122,7 @@ class TestHtmlCommandExceptionHandlers:
         def raise_unexpected(*args, **kwargs):
             raise RuntimeError("Unexpected HTML error")
 
-        monkeypatch.setattr(
-            html_mod.KSeFHTMLGenerator, "generuj_html_z_pliku", raise_unexpected
-        )
+        monkeypatch.setattr(html_mod.KSeFHTMLGenerator, "generuj_html_z_pliku", raise_unexpected)
 
         output_file = tmp_path / "output.html"
 
@@ -1204,8 +1194,8 @@ class TestInteractiveCommandValidationError:
                 "1",
                 "100.00",
                 "23",  # stawka VAT
-                "N",   # Dodać kolejną pozycję? (No)
-                "",    # stopka faktury (empty)
+                "N",  # Dodać kolejną pozycję? (No)
+                "",  # stopka faktury (empty)
                 str(output_file),
             ]
         )
@@ -1278,9 +1268,7 @@ class TestVisualizeCommandFileNotFound:
 
         output_file = tmp_path / "output.pdf"
 
-        result = runner.invoke(
-            cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)]
-        )
+        result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
 
         assert result.exit_code != 0
         assert "Nie znaleziono pliku" in result.output
