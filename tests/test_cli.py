@@ -960,7 +960,8 @@ class TestInteractiveCommandExceptionHandlers:
                 "100.00",  # Cena netto
                 "23",  # Stawka VAT
                 "N",  # Dodać kolejną pozycję? (No)
-                "",  # Stopka faktury (optional)
+                "",  # Stopka faktury (optional) – trailing \n lets prompt complete
+                "",  # ensures newline after stopka so generuj is reached
             ]
         )
 
