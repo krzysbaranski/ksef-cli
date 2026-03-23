@@ -809,3 +809,539 @@ class TestVisualizeCommandWithKSeFNumber:
         with open(output_file, "rb") as f:
             header = f.read(8)
             assert header.startswith(b"%PDF")
+
+
+class TestGenerateCommandExceptionHandlers:
+    """Tests for exception handlers in generate command"""
+
+    def test_generate_command_value_error(self, tmp_path):
+        """Test generate command with invalid date triggers ValueError"""
+        runner = CliRunner()
+
+        data = {
+            "sprzedawca": {
+                "nip": "5260250274",
+                "nazwa": "Test",
+                "adres": {"kod_kraju": "PL", "adres_l1": "ul. Test 1"},
+            },
+            "nabywca": {
+                "nip": "9492107026",
+                "nazwa": "Klient",
+                "adres": {"kod_kraju": "PL", "adres_l1": "ul. Test 2"},
+            },
+            "faktura": {
+                "numer": "FV/001",
+                "data_wystawienia": "not-a-date",
+                "miejsce_wystawienia": "Warszawa",
+                "data_sprzedazy": "2026-02-01",
+                "pozycje": [
+                    {
+                        "nr": 1,
+                        "nazwa": "Usługa",
+                        "jm": "szt",
+                        "ilosc": 1,
+                        "cena_netto": 100.0,
+                        "wartosc_netto": 100.0,
+                        "stawka_vat": 23,
+                    }
+                ],
+            },
+        }
+
+        input_file = tmp_path / "input.json"
+        with open(input_file, "w") as f:
+            json.dump(data, f)
+
+        output_file = tmp_path / "output.xml"
+
+        result = runner.invoke(cli, ["generate", "-i", str(input_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "Błąd" in result.output
+
+    def test_generate_command_oserror(self, sample_invoice_json, tmp_path):
+        """Test generate command raises error when output file cannot be written"""
+        runner = CliRunner()
+
+        input_file = tmp_path / "input.json"
+        with open(input_file, "w") as f:
+            json.dump(sample_invoice_json, f)
+
+        # Use a directory path as the output file to trigger OSError
+        output_file = tmp_path
+
+        result = runner.invoke(cli, ["generate", "-i", str(input_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+
+    def test_generate_command_generic_exception(self, tmp_path, monkeypatch):
+        """Test generate command handles unexpected exceptions"""
+        from ksef_cli import generator as gen_module
+
+        runner = CliRunner()
+
+        data = {
+            "sprzedawca": {
+                "nip": "5260250274",
+                "nazwa": "Test",
+                "adres": {"kod_kraju": "PL", "adres_l1": "ul. Test 1"},
+            },
+            "nabywca": {
+                "nip": "9492107026",
+                "nazwa": "Klient",
+                "adres": {"kod_kraju": "PL", "adres_l1": "ul. Test 2"},
+            },
+            "faktura": {
+                "numer": "FV/001",
+                "data_wystawienia": "2026-02-01",
+                "miejsce_wystawienia": "Warszawa",
+                "data_sprzedazy": "2026-02-01",
+                "pozycje": [
+                    {
+                        "nr": 1,
+                        "nazwa": "Usługa",
+                        "jm": "szt",
+                        "ilosc": 1,
+                        "cena_netto": 100.0,
+                        "wartosc_netto": 100.0,
+                        "stawka_vat": 23,
+                    }
+                ],
+            },
+        }
+
+        input_file = tmp_path / "input.json"
+        with open(input_file, "w") as f:
+            json.dump(data, f)
+
+        output_file = tmp_path / "output.xml"
+
+        def raise_unexpected(*args, **kwargs):
+            raise RuntimeError("Unexpected error")
+
+        monkeypatch.setattr(gen_module.KSeFGenerator, "generuj", raise_unexpected)
+
+        result = runner.invoke(cli, ["generate", "-i", str(input_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "Nieoczekiwany błąd" in result.output
+
+
+class TestInteractiveCommandExceptionHandlers:
+    """Tests for exception handlers in interactive command"""
+
+    def test_interactive_command_generic_exception(self, tmp_path, monkeypatch):
+        """Test interactive command handles unexpected exceptions"""
+        from ksef_cli import generator as gen_module
+
+        runner = CliRunner()
+
+        def raise_unexpected(*args, **kwargs):
+            raise RuntimeError("Unexpected interactive error")
+
+        monkeypatch.setattr(gen_module.KSeFGenerator, "generuj", raise_unexpected)
+
+        input_data = "\n".join(
+            [
+                "5260250274",  # sprzedawca NIP
+                "Moja Firma",  # sprzedawca Nazwa
+                "ul. Testowa 1",  # sprzedawca Adres (linia 1)
+                "",  # sprzedawca Adres (linia 2) – optional, default=""
+                "9492107026",  # nabywca NIP (no adres_l2 prompt for nabywca)
+                "Klient",  # nabywca Nazwa
+                "ul. Klienta 2",  # nabywca Adres (linia 1)
+                "FV/001",  # Numer faktury
+                "2026-02-01",  # Data wystawienia
+                "Warszawa",  # Miejsce wystawienia
+                "2026-02-01",  # Data sprzedaży
+                "Usługa",  # Nazwa pozycji (item nr is auto-computed)
+                "szt",  # Jednostka miary
+                "1",  # Ilość
+                "100.00",  # Cena netto
+                "23",  # Stawka VAT
+                "N",  # Dodać kolejną pozycję? (No)
+                "",  # Stopka faktury (optional) – trailing \n lets prompt complete
+                "",  # ensures newline after stopka so generuj is reached
+            ]
+        )
+
+        result = runner.invoke(cli, ["interactive"], input=input_data)
+
+        assert result.exit_code != 0
+        assert "Nieoczekiwany błąd" in result.output
+
+
+class TestValidateCommandExceptionHandlers:
+    """Tests for exception handlers in validate command"""
+
+    def test_validate_command_generic_exception(self, tmp_path, monkeypatch):
+        """Test validate command handles unexpected exceptions"""
+        from ksef_cli import validator as val_module
+
+        runner = CliRunner()
+
+        xml_file = tmp_path / "valid.xml"
+        with open(xml_file, "w") as f:
+            f.write("<root/>")
+
+        def raise_unexpected(*args, **kwargs):
+            raise RuntimeError("Unexpected validate error")
+
+        monkeypatch.setattr(val_module.KSeFValidator, "validate_xml", raise_unexpected)
+
+        result = runner.invoke(cli, ["validate", "-f", str(xml_file)])
+
+        assert result.exit_code != 0
+        assert "Błąd walidacji" in result.output
+
+
+class TestVisualizeCommandExceptionHandlers:
+    """Tests for exception handlers in visualize command"""
+
+    def test_visualize_command_oserror(self, faktura_ksef, tmp_path, monkeypatch):
+        """Test visualize command handles OSError"""
+        from ksef_cli import pdf_generator as pdf_mod
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        def raise_oserror(*args, **kwargs):
+            e = OSError("disk full")
+            e.strerror = "disk full"
+            raise e
+
+        monkeypatch.setattr(pdf_mod.KSeFPDFGenerator, "generuj_z_pliku", raise_oserror)
+
+        output_file = tmp_path / "output.pdf"
+
+        result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "Błąd" in result.output
+
+    def test_visualize_command_generic_exception(self, faktura_ksef, tmp_path, monkeypatch):
+        """Test visualize command handles unexpected exceptions"""
+        from ksef_cli import pdf_generator as pdf_mod
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        def raise_unexpected(*args, **kwargs):
+            raise RuntimeError("Unexpected PDF error")
+
+        monkeypatch.setattr(pdf_mod.KSeFPDFGenerator, "generuj_z_pliku", raise_unexpected)
+
+        output_file = tmp_path / "output.pdf"
+
+        result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "Błąd generowania PDF" in result.output
+
+
+class TestHtmlCommandExceptionHandlers:
+    """Tests for exception handlers in html command"""
+
+    def test_html_command_file_not_found(self, tmp_path, monkeypatch):
+        """Test html command handles FileNotFoundError"""
+        from ksef_cli import html_generator as html_mod
+
+        runner = CliRunner()
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write("<root/>")
+
+        def raise_not_found(*args, **kwargs):
+            raise FileNotFoundError("file not found")
+
+        monkeypatch.setattr(html_mod.KSeFHTMLGenerator, "generuj_html_z_pliku", raise_not_found)
+
+        output_file = tmp_path / "output.html"
+
+        result = runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "Nie znaleziono pliku" in result.output
+
+    def test_html_command_oserror(self, faktura_ksef, tmp_path, monkeypatch):
+        """Test html command handles OSError"""
+        from ksef_cli import html_generator as html_mod
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        def raise_oserror(*args, **kwargs):
+            e = OSError("permission denied")
+            e.strerror = "permission denied"
+            raise e
+
+        monkeypatch.setattr(html_mod.KSeFHTMLGenerator, "generuj_html_z_pliku", raise_oserror)
+
+        output_file = tmp_path / "output.html"
+
+        result = runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "Błąd" in result.output
+
+    def test_html_command_generic_exception(self, faktura_ksef, tmp_path, monkeypatch):
+        """Test html command handles unexpected exceptions"""
+        from ksef_cli import html_generator as html_mod
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        def raise_unexpected(*args, **kwargs):
+            raise RuntimeError("Unexpected HTML error")
+
+        monkeypatch.setattr(html_mod.KSeFHTMLGenerator, "generuj_html_z_pliku", raise_unexpected)
+
+        output_file = tmp_path / "output.html"
+
+        result = runner.invoke(cli, ["html", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "Błąd generowania HTML" in result.output
+
+
+class TestInteractiveCommandValidationError:
+    """Tests for ValidationError in interactive command"""
+
+    def test_interactive_command_validation_error(self, tmp_path):
+        """Test interactive command ValidationError with invalid NIP (too short)"""
+        runner = CliRunner()
+
+        # NIP '123' is too short (must be exactly 10 chars) so will trigger ValidationError
+        input_data = "\n".join(
+            [
+                "123",  # Invalid NIP - too short (must be 10 chars)
+                "Firma",
+                "ul. Testowa 1",
+                "",
+                "9492107026",
+                "Klient",
+                "ul. Klienta 2",
+                "FV/001",
+                "2026-02-01",
+                "Warszawa",
+                "2026-02-01",
+                "Usługa",
+                "szt",
+                "1",
+                "100.00",
+                "23",  # stawka VAT
+                "N",  # Dodać kolejną pozycję? - No
+                "",  # stopka (empty = None)
+                str(tmp_path / "output.xml"),
+            ]
+        )
+
+        result = runner.invoke(cli, ["interactive"], input=input_data)
+
+        assert result.exit_code != 0
+        assert "walidacji" in result.output or "Błąd" in result.output
+
+    def test_interactive_command_oserror(self, monkeypatch, tmp_path):
+        """Test interactive command OSError when writing output file fails"""
+        runner = CliRunner()
+
+        output_file = tmp_path / "output.xml"
+
+        # Provide valid input data - but patch open to fail on write
+        input_data = "\n".join(
+            [
+                "5260250274",
+                "Firma",
+                "ul. Testowa 1",
+                "",
+                "9492107026",
+                "Klient",
+                "ul. Klienta 2",
+                "FV/001",
+                "2026-02-01",
+                "Warszawa",
+                "2026-02-01",
+                "Usługa",
+                "szt",
+                "1",
+                "100.00",
+                "23",  # stawka VAT
+                "N",  # Dodać kolejną pozycję? (No)
+                "",  # stopka faktury (empty)
+                str(output_file),
+            ]
+        )
+
+        original_open = open
+
+        def patched_open(file, *args, **kwargs):
+            if str(file) == str(output_file) and "w" in str(args):
+                e = OSError("Permission denied")
+                e.strerror = "Permission denied"
+                raise e
+            return original_open(file, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", patched_open)
+
+        result = runner.invoke(cli, ["interactive"], input=input_data)
+
+        assert result.exit_code != 0
+
+
+class TestValidateCommandOsError:
+    """Tests for OSError in validate command"""
+
+    def test_validate_command_oserror(self, tmp_path, monkeypatch):
+        """Test validate command handles OSError when reading the file"""
+        runner = CliRunner()
+
+        xml_file = tmp_path / "valid.xml"
+        with open(xml_file, "w") as f:
+            f.write("<root/>")
+
+        original_open = open
+
+        def patched_open(file, *args, **kwargs):
+            if str(file) == str(xml_file):
+                e = OSError("Permission denied")
+                e.strerror = "Permission denied"
+                raise e
+            return original_open(file, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", patched_open)
+
+        result = runner.invoke(cli, ["validate", "-f", str(xml_file)])
+
+        assert result.exit_code != 0
+        assert "Błąd odczytu pliku" in result.output
+
+
+class TestVisualizeCommandFileNotFound:
+    """Test FileNotFoundError in visualize command"""
+
+    def test_visualize_command_file_not_found(self, faktura_ksef, tmp_path, monkeypatch):
+        """Test visualize command handles FileNotFoundError from PDF generator"""
+        from ksef_cli import pdf_generator as pdf_mod
+        from ksef_cli.generator import KSeFGenerator
+
+        runner = CliRunner()
+
+        generator = KSeFGenerator()
+        xml = generator.generuj(faktura_ksef)
+
+        xml_file = tmp_path / "input.xml"
+        with open(xml_file, "w") as f:
+            f.write(xml)
+
+        def raise_file_not_found(*args, **kwargs):
+            raise FileNotFoundError("font file not found")
+
+        monkeypatch.setattr(pdf_mod.KSeFPDFGenerator, "generuj_z_pliku", raise_file_not_found)
+
+        output_file = tmp_path / "output.pdf"
+
+        result = runner.invoke(cli, ["visualize", "-i", str(xml_file), "-o", str(output_file)])
+
+        assert result.exit_code != 0
+        assert "Nie znaleziono pliku" in result.output
+
+
+class TestValidateCommandXmlSyntaxError:
+    """Test etree.XMLSyntaxError handler in validate command"""
+
+    def test_validate_command_xml_syntax_error_from_validator(self, tmp_path, monkeypatch):
+        """Test validate command handles etree.XMLSyntaxError raised from validator"""
+        from lxml import etree
+
+        from ksef_cli import validator as val_module
+
+        runner = CliRunner()
+
+        xml_file = tmp_path / "valid.xml"
+        with open(xml_file, "w") as f:
+            f.write("<root/>")
+
+        def raise_xml_syntax_error(*args, **kwargs):
+            err = etree.XMLSyntaxError("bad XML", None, 5, 1)
+            raise err
+
+        monkeypatch.setattr(val_module.KSeFValidator, "validate_xml", raise_xml_syntax_error)
+
+        result = runner.invoke(cli, ["validate", "-f", str(xml_file)])
+
+        assert result.exit_code != 0
+        assert "Błąd składni XML" in result.output
+
+
+class TestInteractiveCommandAbort:
+    """Test click.Abort re-raise in interactive command"""
+
+    def test_interactive_command_abort_reraise(self, monkeypatch):
+        """Test that click.Abort raised inside interactive command is re-raised"""
+        import click as click_module
+
+        from ksef_cli import models as models_module
+
+        runner = CliRunner()
+
+        def raise_abort(*args, **kwargs):
+            raise click_module.Abort()
+
+        monkeypatch.setattr(models_module.FakturaKSeF, "__init__", raise_abort)
+
+        input_data = "\n".join(
+            [
+                "5260250274",
+                "Firma",
+                "ul. Testowa 1",
+                "",
+                "9492107026",
+                "Klient",
+                "ul. Klienta 2",
+                "FV/001",
+                "2026-02-01",
+                "Warszawa",
+                "2026-02-01",
+                "Usługa",
+                "szt",
+                "1",
+                "100.00",
+                "23",
+                "N",
+                "",
+                "/tmp/output.xml",
+            ]
+        )
+
+        result = runner.invoke(cli, ["interactive"], input=input_data)
+
+        assert result.exit_code != 0
