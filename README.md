@@ -16,6 +16,64 @@ pip install -e .
 
 ## Użycie
 
+### Pobieranie listy faktur z KSeF
+
+Pobierz faktury z API KSeF przy użyciu tokenu autoryzacyjnego:
+
+```bash
+ksef-cli list-invoices \
+  -n 1234567890 \
+  -t <token> \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z"
+```
+
+#### Opcje filtrowania
+
+```bash
+# Jako nabywca (zamiast sprzedawcy)
+ksef-cli list-invoices -n 1234567890 -t <token> \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z" \
+  --subject-type Subject2
+
+# Filtr po kwocie (brutto)
+ksef-cli list-invoices -n 1234567890 -t <token> \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z" \
+  --amount-type Brutto --amount-from 100 --amount-to 1000
+
+# Filtr po walucie (można podać wiele)
+ksef-cli list-invoices -n 1234567890 -t <token> \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z" \
+  --currency PLN --currency EUR
+
+# Filtr po typie faktury
+ksef-cli list-invoices -n 1234567890 -t <token> \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z" \
+  --invoice-type Vat
+
+# Tylko faktury z załącznikami
+ksef-cli list-invoices -n 1234567890 -t <token> \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z" \
+  --has-attachment
+
+# Zapis do pliku JSON
+ksef-cli list-invoices -n 1234567890 -t <token> \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z" \
+  --output faktury.json
+```
+
+#### Token KSeF
+
+Token autoryzacyjny generujesz w portalu KSeF:
+- **Produkcja**: https://ap.ksef.mf.gov.pl/web/tokens/generate-token
+- **Test**: https://api-test.ksef.mf.gov.pl (dla flagi `--test`)
+
 ### Generowanie faktury z pliku JSON
 
 ```bash
@@ -94,6 +152,25 @@ ksef-cli visualize -i faktura.xml -o faktura.pdf
   }
 }
 ```
+
+## Autentykacja KSeF
+
+Komenda `list-invoices` korzysta z **token-based authentication** (API v2 KSeF):
+
+1. Token autoryzacyjny generujesz w portalu KSeF
+2. Aplikacja szyfruje token przy użyciu RSA-OAEP (klucz publiczny z API)
+3. Wykonuje 6-krokowy proces autentykacji
+4. Otrzymuje JWT access token do zapytań o faktury
+
+**Ograniczenia API**:
+- 20 żądań na godzinę per token
+- Wsparcie dla FA-3 (formularza FA)
+- Daty w formacie ISO-8601 z czasem UTC (np. `2026-01-01T00:00:00.000Z`)
+
+**Dokumentacja KSeF**:
+- [Dokumentacja API KSeF v2](https://api-test.ksef.mf.gov.pl/docs/v2/index.html)
+- [Portal KSeF do generowania tokenów](https://ap.ksef.mf.gov.pl/web/tokens/generate-token)
+- [Test environment](https://api-test.ksef.mf.gov.pl)
 
 ## Przykłady
 
