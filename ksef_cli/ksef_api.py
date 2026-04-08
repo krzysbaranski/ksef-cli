@@ -290,8 +290,14 @@ class KSeFClient:
         date_to: str,
         *,
         subject_type: str = "Subject1",
-        invoicing_mode: str = "Online",
-        form_type: str = "FA",
+        invoicing_mode: Optional[str] = None,
+        form_type: Optional[str] = None,
+        amount_type: Optional[str] = None,
+        amount_from: Optional[float] = None,
+        amount_to: Optional[float] = None,
+        currencies: Optional[List[str]] = None,
+        invoice_types: Optional[List[str]] = None,
+        has_attachment: bool = False,
         page_offset: int = 0,
         page_size: int = 100,
     ) -> List[Dict[str, Any]]:
@@ -305,12 +311,14 @@ class KSeFClient:
             date_to: End of the date range in ISO-8601 format
                 (e.g. ``"2023-12-31T23:59:59.999Z"``).
             subject_type: Entity type for filtering (default ``"Subject1"`` = seller).
-                Options: ``"Subject1"`` (seller), ``"Subject2"`` (buyer),
-                ``"Subject3"``, ``"SubjectAuthorized"``.
-            invoicing_mode: Invoicing mode (default ``"Online"``).
-                Examples: ``"Online"``, ``"Offline"``.
-            form_type: Invoice form type (default ``"FA"``).
-                Examples: ``"FA"`` (FA-3), ``"FVAt"``, ``"RO"``, ``"ZO"``.
+            invoicing_mode: Invoicing mode (e.g., ``"Online"``, ``"Offline"``).
+            form_type: Invoice form type (e.g., ``"FA"``, ``"FVAt"``).
+            amount_type: Amount type for filtering (``"Netto"`` or ``"Brutto"``).
+            amount_from: Minimum amount.
+            amount_to: Maximum amount.
+            currencies: List of currency codes (e.g., ``["PLN", "EUR"]``).
+            invoice_types: List of invoice types (e.g., ``["Vat"]``).
+            has_attachment: Filter by invoices with attachments.
             page_offset: Zero-based page offset (default ``0``).
             page_size: Number of results per page (default ``100``).
 
@@ -341,6 +349,19 @@ class KSeFClient:
             request_body["invoicingMode"] = invoicing_mode
         if form_type:
             request_body["formType"] = form_type
+        if amount_type and (amount_from is not None or amount_to is not None):
+            amount_obj: Dict[str, Any] = {"type": amount_type}
+            if amount_from is not None:
+                amount_obj["from"] = amount_from
+            if amount_to is not None:
+                amount_obj["to"] = amount_to
+            request_body["amount"] = amount_obj
+        if currencies:
+            request_body["currencyCodes"] = currencies
+        if invoice_types:
+            request_body["invoiceTypes"] = invoice_types
+        if has_attachment:
+            request_body["hasAttachment"] = has_attachment
 
         response = self._request(
             "POST",

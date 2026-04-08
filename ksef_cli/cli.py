@@ -410,14 +410,54 @@ def html(xml_file, output_file, numer_ksef):
 @click.option(
     "--invoicing-mode",
     "invoicing_mode",
-    default="Online",
+    default=None,
     help="Tryb fakturowania (np. Online, Offline)",
 )
 @click.option(
     "--form-type",
     "form_type",
-    default="FA",
+    default=None,
     help="Typ formularza (np. FA, FVAt, RO, ZO)",
+)
+@click.option(
+    "--amount-type",
+    "amount_type",
+    default=None,
+    type=click.Choice(["Netto", "Brutto"], case_sensitive=True),
+    help="Typ kwoty do filtrowania (Netto=netto, Brutto=brutto)",
+)
+@click.option(
+    "--amount-from",
+    "amount_from",
+    default=None,
+    type=float,
+    help="Minimalna kwota",
+)
+@click.option(
+    "--amount-to",
+    "amount_to",
+    default=None,
+    type=float,
+    help="Maksymalna kwota",
+)
+@click.option(
+    "--currency",
+    "currencies",
+    multiple=True,
+    help="Kody walut (np. PLN, EUR, USD). Można podać wiele razy.",
+)
+@click.option(
+    "--invoice-type",
+    "invoice_types",
+    multiple=True,
+    help="Typy faktur (np. Vat, Margin, etc.). Można podać wiele razy.",
+)
+@click.option(
+    "--has-attachment",
+    "has_attachment",
+    is_flag=True,
+    default=False,
+    help="Tylko faktury z załącznikami",
 )
 def list_invoices(
     nip,
@@ -429,6 +469,12 @@ def list_invoices(
     subject_type,
     invoicing_mode,
     form_type,
+    amount_type,
+    amount_from,
+    amount_to,
+    currencies,
+    invoice_types,
+    has_attachment,
 ):
     """Pobiera listę faktur z API KSeF (autoryzacja tokenem)"""
     from .ksef_api import KSeFAPIError, KSeFAuthError, KSeFClient
@@ -441,6 +487,12 @@ def list_invoices(
             subject_type=subject_type,
             invoicing_mode=invoicing_mode,
             form_type=form_type,
+            amount_type=amount_type,
+            amount_from=amount_from,
+            amount_to=amount_to,
+            currencies=list(currencies) if currencies else None,
+            invoice_types=list(invoice_types) if invoice_types else None,
+            has_attachment=has_attachment,
         )
 
         result = json.dumps(invoices, ensure_ascii=False, indent=2)
