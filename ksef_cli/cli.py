@@ -400,13 +400,48 @@ def html(xml_file, output_file, numer_ksef):
     type=click.Path(),
     help="Plik wyjściowy JSON (domyślnie: wyświetla na ekranie)",
 )
-def list_invoices(nip, token, date_from, date_to, use_test_env, output_file):
+@click.option(
+    "--subject-type",
+    "subject_type",
+    default="Subject1",
+    type=click.Choice(["Subject1", "Subject2", "Subject3", "SubjectAuthorized"], case_sensitive=True),
+    help="Typ podmiotu (Subject1=sprzedawca, Subject2=nabywca, Subject3, SubjectAuthorized)",
+)
+@click.option(
+    "--invoicing-mode",
+    "invoicing_mode",
+    default="Online",
+    help="Tryb fakturowania (np. Online, Offline)",
+)
+@click.option(
+    "--form-type",
+    "form_type",
+    default="FA",
+    help="Typ formularza (np. FA, FVAt, RO, ZO)",
+)
+def list_invoices(
+    nip,
+    token,
+    date_from,
+    date_to,
+    use_test_env,
+    output_file,
+    subject_type,
+    invoicing_mode,
+    form_type,
+):
     """Pobiera listę faktur z API KSeF (autoryzacja tokenem)"""
     from .ksef_api import KSeFAPIError, KSeFAuthError, KSeFClient
 
     try:
         client = KSeFClient(nip=nip, token=token, test=use_test_env)
-        invoices = client.list_invoices(date_from=date_from, date_to=date_to)
+        invoices = client.list_invoices(
+            date_from=date_from,
+            date_to=date_to,
+            subject_type=subject_type,
+            invoicing_mode=invoicing_mode,
+            form_type=form_type,
+        )
 
         result = json.dumps(invoices, ensure_ascii=False, indent=2)
 

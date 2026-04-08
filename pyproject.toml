@@ -94,7 +94,7 @@ name = "ksef-cli"
 version = "1.0.0"
 description = "CLI tool for generating KSeF (Polish National e-Invoice System) invoices"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<4"
 license = {text = "MIT"}
 authors = [
     {name = "KSeF CLI Contributors"}
@@ -114,6 +114,7 @@ dependencies = [
     "reportlab>=4.0.0",
     "qrcode[pil]>=7.0.0",
     "pillow>=10.0.0",
+    "cryptography>=41.0.0",
 ]
 
 [project.optional-dependencies]
@@ -131,3 +132,10 @@ dev = [
 
 [project.scripts]
 ksef-cli = "ksef_cli.cli:cli"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.0.3,<10.0.0)",
+    "pytest-cov (>=7.1.0,<8.0.0)",
+    "pytest-mock (>=3.15.1,<4.0.0)"
+]
