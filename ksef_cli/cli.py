@@ -400,13 +400,102 @@ def html(xml_file, output_file, numer_ksef):
     type=click.Path(),
     help="Plik wyjściowy JSON (domyślnie: wyświetla na ekranie)",
 )
-def list_invoices(nip, token, date_from, date_to, use_test_env, output_file):
+@click.option(
+    "--subject-type",
+    "subject_type",
+    default="Subject1",
+    type=click.Choice(
+        ["Subject1", "Subject2", "Subject3", "SubjectAuthorized"], case_sensitive=True
+    ),
+    help="Typ podmiotu (Subject1=sprzedawca, Subject2=nabywca, Subject3, SubjectAuthorized)",
+)
+@click.option(
+    "--invoicing-mode",
+    "invoicing_mode",
+    default=None,
+    help="Tryb fakturowania (np. Online, Offline)",
+)
+@click.option(
+    "--form-type",
+    "form_type",
+    default=None,
+    help="Typ formularza (np. FA, FVAt, RO, ZO)",
+)
+@click.option(
+    "--amount-type",
+    "amount_type",
+    default=None,
+    type=click.Choice(["Netto", "Brutto"], case_sensitive=True),
+    help="Typ kwoty do filtrowania (Netto=netto, Brutto=brutto)",
+)
+@click.option(
+    "--amount-from",
+    "amount_from",
+    default=None,
+    type=float,
+    help="Minimalna kwota",
+)
+@click.option(
+    "--amount-to",
+    "amount_to",
+    default=None,
+    type=float,
+    help="Maksymalna kwota",
+)
+@click.option(
+    "--currency",
+    "currencies",
+    multiple=True,
+    help="Kody walut (np. PLN, EUR, USD). Można podać wiele razy.",
+)
+@click.option(
+    "--invoice-type",
+    "invoice_types",
+    multiple=True,
+    help="Typy faktur (np. Vat, Margin, etc.). Można podać wiele razy.",
+)
+@click.option(
+    "--has-attachment",
+    "has_attachment",
+    is_flag=True,
+    default=False,
+    help="Tylko faktury z załącznikami",
+)
+def list_invoices(
+    nip,
+    token,
+    date_from,
+    date_to,
+    use_test_env,
+    output_file,
+    subject_type,
+    invoicing_mode,
+    form_type,
+    amount_type,
+    amount_from,
+    amount_to,
+    currencies,
+    invoice_types,
+    has_attachment,
+):
     """Pobiera listę faktur z API KSeF (autoryzacja tokenem)"""
     from .ksef_api import KSeFAPIError, KSeFAuthError, KSeFClient
 
     try:
         client = KSeFClient(nip=nip, token=token, test=use_test_env)
-        invoices = client.list_invoices(date_from=date_from, date_to=date_to)
+        invoices = client.list_invoices(
+            date_from=date_from,
+            date_to=date_to,
+            subject_type=subject_type,
+            invoicing_mode=invoicing_mode,
+            form_type=form_type,
+            amount_type=amount_type,
+            amount_from=amount_from,
+            amount_to=amount_to,
+            currencies=list(currencies) if currencies else None,
+            invoice_types=list(invoice_types) if invoice_types else None,
+            has_attachment=has_attachment,
+        )
 
         result = json.dumps(invoices, ensure_ascii=False, indent=2)
 

@@ -1,5 +1,6 @@
 """Tests for KSeF API client (ksef_cli.ksef_api)."""
 
+import base64
 import json
 from unittest.mock import MagicMock, patch
 
@@ -11,7 +12,6 @@ from ksef_cli.ksef_api import (
     KSeFAPIError,
     KSeFAuthError,
     KSeFClient,
-    _sign_token,
 )
 
 # ---------------------------------------------------------------------------
@@ -32,18 +32,80 @@ def test_client():
 CHALLENGE_RESPONSE = {
     "challenge": "20230101-CR-ABCDEF12",
     "timestamp": "2023-01-01T00:00:00.000Z",
+    "timestampMs": 1672531200000,
+    "clientIp": "127.0.0.1",
 }
 
-SESSION_RESPONSE = {
-    "sessionToken": {
-        "token": "SESSION_TOKEN_VALUE",
-        "tokenExpiry": "2023-01-01T01:00:00.000Z",
-    },
+AUTH_RESPONSE = {
     "referenceNumber": "REF-001",
+    "authenticationToken": {
+        "token": "AUTH_TOKEN_JWT_VALUE",
+    },
 }
+
+AUTH_STATUS_RESPONSE = {
+    "startDate": "2026-04-08T22:48:17.3422391+00:00",
+    "authenticationMethod": "Token",
+    "authenticationMethodInfo": {
+        "category": "Token",
+        "code": "token.ksef",
+        "displayName": "Token KSeF",
+    },
+    "status": {
+        "code": 200,
+        "description": "Uwierzytelnianie zakończone sukcesem",
+    },
+    "isTokenRedeemed": False,
+}
+
+REDEEM_RESPONSE = {
+    "accessToken": {
+        "token": "ACCESS_TOKEN_JWT_VALUE",
+        "exp": 1672531800,
+    },
+    "refreshToken": {
+        "token": "REFRESH_TOKEN_JWT_VALUE",
+        "exp": 1673395200,
+    },
+}
+
+# Base64-encoded DER certificate (minimal test certificate)
+# Generated from a simple self-signed cert for testing purposes
+PUBLIC_KEY_CERT_B64 = (
+    "MIIDazCCAlOgAwIBAgIUWnUvwuSyM2BgvAQLFJiUEZEiDfcwDQYJKoZIhvcNAQEL"
+    "BQAwRTELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoM"
+    "GEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZDAeFw0yMzAxMDEwMDAwMDBaFw0yNDAx"
+    "MDEwMDAwMDBaMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEw"
+    "HwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwggEiMA0GCSqGSIb3DQEB"
+    "AQUAA4IBDwAwggEKAoIBAQC7W8pGMEJT3QVZZ7ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ"
+    "5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5"
+    "ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ"
+    "5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ"
+    "5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ"
+    "5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ"
+    "5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ"
+    "5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ5ZZ"
+    "5ZZ5AoIBAQCX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0"
+    "LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0L"
+    "X0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX"
+    "0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0"
+    "LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0L"
+    "X0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX"
+    "0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0LX0"
+)
+
+# API v2 returns array of certificate objects directly (not wrapped)
+PUBLIC_KEY_RESPONSE = [
+    {
+        "certificate": PUBLIC_KEY_CERT_B64,
+        "validFrom": "2023-01-01T00:00:00.000Z",
+        "validTo": "2024-01-01T00:00:00.000Z",
+        "usage": ["KsefTokenEncryption"],
+    }
+]
 
 INVOICE_LIST_RESPONSE = {
-    "invoiceList": [
+    "invoiceMetadata": [
         {
             "ksefReferenceNumber": "INV-001",
             "invoicingDate": "2023-06-01T00:00:00.000Z",
@@ -68,36 +130,6 @@ INVOICE_LIST_RESPONSE = {
 
 
 # ---------------------------------------------------------------------------
-# _sign_token
-# ---------------------------------------------------------------------------
-
-
-class TestSignToken:
-    def test_returns_base64_string(self):
-        result = _sign_token("my-token", "2023-01-01T00:00:00.000Z")
-        import base64
-
-        # Should be valid base64
-        decoded = base64.b64decode(result)
-        assert len(decoded) == 32  # SHA-256 digest is 32 bytes
-
-    def test_different_tokens_produce_different_signatures(self):
-        sig1 = _sign_token("token-a", "2023-01-01T00:00:00.000Z")
-        sig2 = _sign_token("token-b", "2023-01-01T00:00:00.000Z")
-        assert sig1 != sig2
-
-    def test_different_timestamps_produce_different_signatures(self):
-        sig1 = _sign_token("token", "2023-01-01T00:00:00.000Z")
-        sig2 = _sign_token("token", "2023-06-01T00:00:00.000Z")
-        assert sig1 != sig2
-
-    def test_same_inputs_produce_same_signature(self):
-        sig1 = _sign_token("token", "2023-01-01T00:00:00.000Z")
-        sig2 = _sign_token("token", "2023-01-01T00:00:00.000Z")
-        assert sig1 == sig2
-
-
-# ---------------------------------------------------------------------------
 # KSeFClient initialisation
 # ---------------------------------------------------------------------------
 
@@ -109,8 +141,8 @@ class TestKSeFClientInit:
     def test_test_flag_uses_test_url(self, test_client):
         assert test_client.base_url == KSEF_TEST_API_URL
 
-    def test_session_token_initially_none(self, client):
-        assert client.session_token is None
+    def test_access_token_initially_none(self, client):
+        assert client.access_token is None
 
     def test_stores_nip_and_token(self):
         c = KSeFClient(nip="9876543210", token="my-token")
@@ -195,65 +227,60 @@ class TestKSeFClientRequest:
 
 
 class TestKSeFClientAuthenticate:
-    def _mock_two_requests(self):
-        """Return side_effect list simulating challenge then session responses."""
-        challenge_cm = _make_urlopen_mock(CHALLENGE_RESPONSE)
-        session_cm = _make_urlopen_mock(SESSION_RESPONSE)
-        return [challenge_cm, session_cm]
+    def test_sets_access_token_on_success(self, client):
+        with patch.object(client, "_request") as mock_request:
+            responses = [CHALLENGE_RESPONSE, AUTH_RESPONSE, AUTH_STATUS_RESPONSE, REDEEM_RESPONSE]
+            mock_request.side_effect = responses
+            with patch.object(client, "_encrypt_token", return_value="ENCRYPTED_TOKEN_B64"):
+                client.authenticate()
 
-    def test_sets_session_token_on_success(self, client):
-        with patch("urllib.request.urlopen", side_effect=self._mock_two_requests()):
-            client.authenticate()
-
-        assert client.session_token == "SESSION_TOKEN_VALUE"
+        assert client.access_token == "ACCESS_TOKEN_JWT_VALUE"
 
     def test_sends_nip_in_challenge_request(self, client):
-        requests = []
+        with patch.object(client, "_request") as mock_request:
+            responses = [CHALLENGE_RESPONSE, AUTH_RESPONSE, AUTH_STATUS_RESPONSE, REDEEM_RESPONSE]
+            mock_request.side_effect = responses
+            with patch.object(client, "_encrypt_token", return_value="ENCRYPTED_TOKEN_B64"):
+                client.authenticate()
 
-        def capture_urlopen(req):
-            requests.append(req)
-            if len(requests) == 1:
-                return _make_urlopen_mock(CHALLENGE_RESPONSE)
-            return _make_urlopen_mock(SESSION_RESPONSE)
+        # First call is POST /auth/challenge
+        call_args = mock_request.call_args_list[0]
+        assert call_args[0][0:2] == ("POST", "/v2/auth/challenge")
+        req_body = call_args[0][2]
+        assert req_body["contextIdentifier"]["value"] == "1234567890"
 
-        with patch("urllib.request.urlopen", side_effect=capture_urlopen):
-            client.authenticate()
+    def test_sends_challenge_in_auth_request(self, client):
+        with patch.object(client, "_request") as mock_request:
+            responses = [CHALLENGE_RESPONSE, AUTH_RESPONSE, AUTH_STATUS_RESPONSE, REDEEM_RESPONSE]
+            mock_request.side_effect = responses
+            with patch.object(client, "_encrypt_token", return_value="ENCRYPTED_TOKEN_B64"):
+                client.authenticate()
 
-        body = json.loads(requests[0].data.decode("utf-8"))
-        assert body["contextIdentifier"]["identifier"] == "1234567890"
-        assert body["contextIdentifier"]["type"] == "onip"
-
-    def test_sends_challenge_in_initialised_token_request(self, client):
-        requests = []
-
-        def capture_urlopen(req):
-            requests.append(req)
-            if len(requests) == 1:
-                return _make_urlopen_mock(CHALLENGE_RESPONSE)
-            return _make_urlopen_mock(SESSION_RESPONSE)
-
-        with patch("urllib.request.urlopen", side_effect=capture_urlopen):
-            client.authenticate()
-
-        body = json.loads(requests[1].data.decode("utf-8"))
-        assert body["challenge"]["challenge"] == CHALLENGE_RESPONSE["challenge"]
+        # Second call is POST /auth/ksef-token
+        call_args = mock_request.call_args_list[1]
+        assert call_args[0][0:2] == ("POST", "/v2/auth/ksef-token")
+        req_body = call_args[0][2]
+        assert req_body["challenge"] == CHALLENGE_RESPONSE["challenge"]
 
     def test_missing_challenge_raises_auth_error(self, client):
-        bad_challenge = {"challenge": "", "timestamp": ""}
+        bad_challenge = {"challenge": "", "timestampMs": 0}
         with patch("urllib.request.urlopen", return_value=_make_urlopen_mock(bad_challenge)):
-            with pytest.raises(KSeFAuthError, match="Invalid authorisation challenge"):
+            with pytest.raises(KSeFAuthError, match="Invalid challenge response"):
                 client.authenticate()
 
-    def test_missing_session_token_raises_auth_error(self, client):
-        session_without_token = {"sessionToken": {}, "referenceNumber": "REF"}
-
-        side_effects = [
-            _make_urlopen_mock(CHALLENGE_RESPONSE),
-            _make_urlopen_mock(session_without_token),
-        ]
-        with patch("urllib.request.urlopen", side_effect=side_effects):
-            with pytest.raises(KSeFAuthError, match="Session token not found"):
-                client.authenticate()
+    def test_missing_access_token_raises_auth_error(self, client):
+        redeem_without_token = {}
+        with patch.object(client, "_request") as mock_request:
+            responses = [
+                CHALLENGE_RESPONSE,
+                AUTH_RESPONSE,
+                AUTH_STATUS_RESPONSE,
+                redeem_without_token,
+            ]
+            mock_request.side_effect = responses
+            with patch.object(client, "_encrypt_token", return_value="ENCRYPTED_TOKEN_B64"):
+                with pytest.raises(KSeFAuthError, match="Access token not found"):
+                    client.authenticate()
 
 
 # ---------------------------------------------------------------------------
@@ -263,35 +290,39 @@ class TestKSeFClientAuthenticate:
 
 class TestKSeFClientListInvoices:
     def _mock_auth_and_invoices(self):
+        """Mock requests for auth flow + invoice listing."""
         return [
             _make_urlopen_mock(CHALLENGE_RESPONSE),
-            _make_urlopen_mock(SESSION_RESPONSE),
+            _make_urlopen_mock(AUTH_RESPONSE),
+            _make_urlopen_mock(AUTH_STATUS_RESPONSE),
+            _make_urlopen_mock(REDEEM_RESPONSE),
             _make_urlopen_mock(INVOICE_LIST_RESPONSE),
         ]
 
     def test_returns_invoice_list(self, client):
         with patch("urllib.request.urlopen", side_effect=self._mock_auth_and_invoices()):
-            invoices = client.list_invoices(
-                date_from="2023-01-01T00:00:00.000Z",
-                date_to="2023-12-31T23:59:59.999Z",
-            )
+            with patch.object(client, "_encrypt_token", return_value="ENCRYPTED"):
+                invoices = client.list_invoices(
+                    date_from="2023-01-01T00:00:00.000Z",
+                    date_to="2023-12-31T23:59:59.999Z",
+                )
 
         assert len(invoices) == 2
         assert invoices[0]["ksefReferenceNumber"] == "INV-001"
 
-    def test_authenticates_automatically_when_no_session(self, client):
-        assert client.session_token is None
+    def test_authenticates_automatically_when_no_token(self, client):
+        assert client.access_token is None
         with patch("urllib.request.urlopen", side_effect=self._mock_auth_and_invoices()):
-            client.list_invoices(
-                date_from="2023-01-01T00:00:00.000Z",
-                date_to="2023-12-31T23:59:59.999Z",
-            )
+            with patch.object(client, "_encrypt_token", return_value="ENCRYPTED"):
+                client.list_invoices(
+                    date_from="2023-01-01T00:00:00.000Z",
+                    date_to="2023-12-31T23:59:59.999Z",
+                )
 
-        # session token should now be populated
-        assert client.session_token == "SESSION_TOKEN_VALUE"
+        assert client.access_token == "ACCESS_TOKEN_JWT_VALUE"
 
-    def test_skips_auth_when_session_already_set(self, client):
-        client.session_token = "EXISTING_TOKEN"
+    def test_skips_auth_when_access_token_set(self, client):
+        client.access_token = "EXISTING_TOKEN"
         invoice_cm = _make_urlopen_mock(INVOICE_LIST_RESPONSE)
 
         with patch("urllib.request.urlopen", return_value=invoice_cm) as mock_urlopen:
@@ -300,11 +331,10 @@ class TestKSeFClientListInvoices:
                 date_to="2023-12-31T23:59:59.999Z",
             )
 
-        # Only one request should have been made (no auth)
         assert mock_urlopen.call_count == 1
 
-    def test_sends_session_token_header(self, client):
-        client.session_token = "MY_SESSION"
+    def test_sends_bearer_token_header(self, client):
+        client.access_token = "MY_TOKEN"
         requests = []
 
         def capture(req):
@@ -318,10 +348,10 @@ class TestKSeFClientListInvoices:
             )
 
         req = requests[0]
-        assert req.get_header("Sessiontoken") == "MY_SESSION"
+        assert req.get_header("Authorization") == "Bearer MY_TOKEN"
 
     def test_sends_date_range_in_body(self, client):
-        client.session_token = "TOKEN"
+        client.access_token = "TOKEN"
         requests = []
 
         def capture(req):
@@ -335,12 +365,12 @@ class TestKSeFClientListInvoices:
             )
 
         body = json.loads(requests[0].data.decode("utf-8"))
-        assert body["invoiceDate"]["dateFrom"] == "2023-01-01T00:00:00.000Z"
-        assert body["invoiceDate"]["dateTo"] == "2023-12-31T23:59:59.999Z"
+        assert body["dateRange"]["from"] == "2023-01-01T00:00:00.000Z"
+        assert body["dateRange"]["to"] == "2023-12-31T23:59:59.999Z"
 
     def test_returns_empty_list_when_no_invoices(self, client):
-        client.session_token = "TOKEN"
-        empty_response = {"invoiceList": [], "numberOfElements": 0}
+        client.access_token = "TOKEN"
+        empty_response = {"invoiceMetadata": [], "numberOfElements": 0}
 
         with patch("urllib.request.urlopen", return_value=_make_urlopen_mock(empty_response)):
             invoices = client.list_invoices(
@@ -351,7 +381,7 @@ class TestKSeFClientListInvoices:
         assert invoices == []
 
     def test_returns_empty_list_when_key_missing(self, client):
-        client.session_token = "TOKEN"
+        client.access_token = "TOKEN"
         response_without_key = {"numberOfElements": 0}
 
         with patch("urllib.request.urlopen", return_value=_make_urlopen_mock(response_without_key)):
@@ -370,9 +400,12 @@ class TestKSeFClientListInvoices:
 
 class TestListInvoicesCLI:
     def _mock_all(self):
+        """Mock all requests for CLI test (auth flow + invoices)."""
         return [
             _make_urlopen_mock(CHALLENGE_RESPONSE),
-            _make_urlopen_mock(SESSION_RESPONSE),
+            _make_urlopen_mock(AUTH_RESPONSE),
+            _make_urlopen_mock(AUTH_STATUS_RESPONSE),
+            _make_urlopen_mock(REDEEM_RESPONSE),
             _make_urlopen_mock(INVOICE_LIST_RESPONSE),
         ]
 
@@ -383,22 +416,23 @@ class TestListInvoicesCLI:
 
         runner = CliRunner()
         with patch("urllib.request.urlopen", side_effect=self._mock_all()):
-            result = runner.invoke(
-                cli,
-                [
-                    "list-invoices",
-                    "--nip",
-                    "1234567890",
-                    "--token",
-                    "secret",
-                    "--date-from",
-                    "2023-01-01T00:00:00.000Z",
-                    "--date-to",
-                    "2023-12-31T23:59:59.999Z",
-                ],
-            )
+            with patch("ksef_cli.ksef_api.KSeFClient._encrypt_token", return_value="ENCRYPTED"):
+                result = runner.invoke(
+                    cli,
+                    [
+                        "list-invoices",
+                        "--nip",
+                        "1234567890",
+                        "--token",
+                        "secret",
+                        "--date-from",
+                        "2023-01-01T00:00:00.000Z",
+                        "--date-to",
+                        "2023-12-31T23:59:59.999Z",
+                    ],
+                )
 
-        assert result.exit_code == 0
+        assert result.exit_code == 0, f"Exit code {result.exit_code}: {result.output}"
         # Extract the JSON array from stdout (stderr may be mixed in by Click)
         json_end = result.output.rfind("]") + 1
         parsed = json.loads(result.output[:json_end])
@@ -413,24 +447,25 @@ class TestListInvoicesCLI:
         output_file = tmp_path / "invoices.json"
 
         with patch("urllib.request.urlopen", side_effect=self._mock_all()):
-            result = runner.invoke(
-                cli,
-                [
-                    "list-invoices",
-                    "--nip",
-                    "1234567890",
-                    "--token",
-                    "secret",
-                    "--date-from",
-                    "2023-01-01T00:00:00.000Z",
-                    "--date-to",
-                    "2023-12-31T23:59:59.999Z",
-                    "-o",
-                    str(output_file),
-                ],
-            )
+            with patch("ksef_cli.ksef_api.KSeFClient._encrypt_token", return_value="ENCRYPTED"):
+                result = runner.invoke(
+                    cli,
+                    [
+                        "list-invoices",
+                        "--nip",
+                        "1234567890",
+                        "--token",
+                        "secret",
+                        "--date-from",
+                        "2023-01-01T00:00:00.000Z",
+                        "--date-to",
+                        "2023-12-31T23:59:59.999Z",
+                        "-o",
+                        str(output_file),
+                    ],
+                )
 
-        assert result.exit_code == 0
+        assert result.exit_code == 0, f"Exit code {result.exit_code}: {result.output}"
         assert output_file.exists()
         data = json.loads(output_file.read_text(encoding="utf-8"))
         assert len(data) == 2
@@ -445,29 +480,34 @@ class TestListInvoicesCLI:
 
         def capture_urlopen(req):
             captured_urls.append(req.full_url)
-            if len(captured_urls) == 1:
-                return _make_urlopen_mock(CHALLENGE_RESPONSE)
-            if len(captured_urls) == 2:
-                return _make_urlopen_mock(SESSION_RESPONSE)
-            return _make_urlopen_mock(INVOICE_LIST_RESPONSE)
+            responses = [
+                CHALLENGE_RESPONSE,
+                AUTH_RESPONSE,
+                AUTH_STATUS_RESPONSE,
+                REDEEM_RESPONSE,
+                INVOICE_LIST_RESPONSE,
+            ]
+            idx = len(captured_urls) - 1
+            return _make_urlopen_mock(responses[idx] if idx < len(responses) else {})
 
         runner = CliRunner()
         with patch("urllib.request.urlopen", side_effect=capture_urlopen):
-            runner.invoke(
-                cli,
-                [
-                    "list-invoices",
-                    "--nip",
-                    "1234567890",
-                    "--token",
-                    "secret",
-                    "--date-from",
-                    "2023-01-01T00:00:00.000Z",
-                    "--date-to",
-                    "2023-12-31T23:59:59.999Z",
-                    "--test",
-                ],
-            )
+            with patch("ksef_cli.ksef_api.KSeFClient._encrypt_token", return_value="ENCRYPTED"):
+                runner.invoke(
+                    cli,
+                    [
+                        "list-invoices",
+                        "--nip",
+                        "1234567890",
+                        "--token",
+                        "secret",
+                        "--date-from",
+                        "2023-01-01T00:00:00.000Z",
+                        "--date-to",
+                        "2023-12-31T23:59:59.999Z",
+                        "--test",
+                    ],
+                )
 
         assert all(KSEF_TEST_API_URL in url for url in captured_urls)
 
@@ -476,7 +516,7 @@ class TestListInvoicesCLI:
 
         from ksef_cli.cli import cli
 
-        bad_challenge = {"challenge": "", "timestamp": ""}
+        bad_challenge = {"challenge": "", "timestampMs": 0}
         runner = CliRunner()
         with patch("urllib.request.urlopen", return_value=_make_urlopen_mock(bad_challenge)):
             result = runner.invoke(
