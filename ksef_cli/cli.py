@@ -404,7 +404,9 @@ def html(xml_file, output_file, numer_ksef):
     "--subject-type",
     "subject_type",
     default="Subject1",
-    type=click.Choice(["Subject1", "Subject2", "Subject3", "SubjectAuthorized"], case_sensitive=True),
+    type=click.Choice(
+        ["Subject1", "Subject2", "Subject3", "SubjectAuthorized"], case_sensitive=True
+    ),
     help="Typ podmiotu (Subject1=sprzedawca, Subject2=nabywca, Subject3, SubjectAuthorized)",
 )
 @click.option(
