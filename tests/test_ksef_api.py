@@ -229,8 +229,7 @@ class TestKSeFClientRequest:
 class TestKSeFClientAuthenticate:
     def test_sets_access_token_on_success(self, client):
         with patch.object(client, "_request") as mock_request:
-            responses = [CHALLENGE_RESPONSE, AUTH_RESPONSE,
-                        AUTH_STATUS_RESPONSE, REDEEM_RESPONSE]
+            responses = [CHALLENGE_RESPONSE, AUTH_RESPONSE, AUTH_STATUS_RESPONSE, REDEEM_RESPONSE]
             mock_request.side_effect = responses
             with patch.object(client, "_encrypt_token", return_value="ENCRYPTED_TOKEN_B64"):
                 client.authenticate()
@@ -239,8 +238,7 @@ class TestKSeFClientAuthenticate:
 
     def test_sends_nip_in_challenge_request(self, client):
         with patch.object(client, "_request") as mock_request:
-            responses = [CHALLENGE_RESPONSE, AUTH_RESPONSE,
-                        AUTH_STATUS_RESPONSE, REDEEM_RESPONSE]
+            responses = [CHALLENGE_RESPONSE, AUTH_RESPONSE, AUTH_STATUS_RESPONSE, REDEEM_RESPONSE]
             mock_request.side_effect = responses
             with patch.object(client, "_encrypt_token", return_value="ENCRYPTED_TOKEN_B64"):
                 client.authenticate()
@@ -253,8 +251,7 @@ class TestKSeFClientAuthenticate:
 
     def test_sends_challenge_in_auth_request(self, client):
         with patch.object(client, "_request") as mock_request:
-            responses = [CHALLENGE_RESPONSE, AUTH_RESPONSE,
-                        AUTH_STATUS_RESPONSE, REDEEM_RESPONSE]
+            responses = [CHALLENGE_RESPONSE, AUTH_RESPONSE, AUTH_STATUS_RESPONSE, REDEEM_RESPONSE]
             mock_request.side_effect = responses
             with patch.object(client, "_encrypt_token", return_value="ENCRYPTED_TOKEN_B64"):
                 client.authenticate()
@@ -274,8 +271,12 @@ class TestKSeFClientAuthenticate:
     def test_missing_access_token_raises_auth_error(self, client):
         redeem_without_token = {}
         with patch.object(client, "_request") as mock_request:
-            responses = [CHALLENGE_RESPONSE, AUTH_RESPONSE,
-                        AUTH_STATUS_RESPONSE, redeem_without_token]
+            responses = [
+                CHALLENGE_RESPONSE,
+                AUTH_RESPONSE,
+                AUTH_STATUS_RESPONSE,
+                redeem_without_token,
+            ]
             mock_request.side_effect = responses
             with patch.object(client, "_encrypt_token", return_value="ENCRYPTED_TOKEN_B64"):
                 with pytest.raises(KSeFAuthError, match="Access token not found"):
