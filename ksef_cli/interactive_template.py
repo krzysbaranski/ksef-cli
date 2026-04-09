@@ -1,7 +1,8 @@
 """Interactive template-based invoice generation."""
 
-import click
 from datetime import date
+
+import click
 
 from .models import Adres, Faktura, FakturaKSeF, Podmiot, PozycjaFaktury
 

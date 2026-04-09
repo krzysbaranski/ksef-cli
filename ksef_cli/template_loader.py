@@ -1,6 +1,7 @@
 """Load invoice templates from XML files."""
 
 from datetime import date
+
 from lxml import etree
 
 from .models import Adres, Faktura, FakturaKSeF, Podmiot, PozycjaFaktury

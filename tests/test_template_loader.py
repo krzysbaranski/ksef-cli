@@ -1,16 +1,18 @@
 """Tests for template loader functionality."""
 
-import pytest
 from datetime import date
-from ksef_cli.template_loader import TemplateLoader
+
+import pytest
+
 from ksef_cli.generator import KSeFGenerator
 from ksef_cli.models import (
     Adres,
-    FakturaKSeF,
     Faktura,
+    FakturaKSeF,
     Podmiot,
     PozycjaFaktury,
 )
+from ksef_cli.template_loader import TemplateLoader
 
 
 @pytest.fixture
