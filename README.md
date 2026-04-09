@@ -5,7 +5,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Aplikacja CLI do generacji faktur w formacie KSeF (Krajowy System e-Faktur) zgodnie ze schematem FA (3) wersja 1-0E.
+Aplikacja CLI do generacji i zarządzania fakturami w formacie KSeF (Krajowy System e-Faktur) zgodnie ze schematem FA (3) wersja 1-0E. Obsługuje tworzenie faktur, pobieranie z API KSeF oraz wizualizację do PDF.
 
 ## Instalacja
 
@@ -13,6 +13,20 @@ Aplikacja CLI do generacji faktur w formacie KSeF (Krajowy System e-Faktur) zgod
 pip install -r requirements.txt
 pip install -e .
 ```
+
+## Spis komend
+
+**POBIERANIE Z API KSeF:**
+- `list-invoices`    — Pobierz listę faktur z filtrami
+- `get-invoice`      — Pobierz konkretną fakturę XML
+
+**GENEROWANIE FAKTUR:**
+- `generate`         — Wygeneruj XML z pliku JSON
+- `interactive`      — Wygeneruj XML interaktywnie (pytania)
+
+**WALIDACJA I WIZUALIZACJA:**
+- `validate`         — Waliduj plik XML KSeF
+- `visualize`        — Konwertuj XML na PDF
 
 ## Użycie
 
@@ -73,6 +87,38 @@ ksef-cli list-invoices -n 1234567890 -t <token> \
 Token autoryzacyjny generujesz w portalu KSeF:
 - **Produkcja**: https://ap.ksef.mf.gov.pl/web/tokens/generate-token
 - **Test**: https://api-test.ksef.mf.gov.pl (dla flagi `--test`)
+
+#### Debugowanie
+
+Użyj flagi `--debug` aby zobaczyć szczegóły żądań i odpowiedzi:
+
+```bash
+ksef-cli list-invoices -n 1234567890 -t $TOKEN \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z" \
+  --debug
+```
+
+### Pobieranie konkretnej faktury z KSeF
+
+Pobierz pełny dokument XML faktury po numerze KSeF:
+
+```bash
+ksef-cli get-invoice \
+  -n 1234567890 \
+  -t <token> \
+  -k 123-456-789-10-2026-0000001
+```
+
+Zapisz do pliku:
+
+```bash
+ksef-cli get-invoice \
+  -n 1234567890 \
+  -t <token> \
+  -k 123-456-789-10-2026-0000001 \
+  -o faktura.xml
+```
 
 ### Generowanie faktury z pliku JSON
 
@@ -171,6 +217,72 @@ Komenda `list-invoices` korzysta z **token-based authentication** (API v2 KSeF):
 - [Dokumentacja API KSeF v2](https://api-test.ksef.mf.gov.pl/docs/v2/index.html)
 - [Portal KSeF do generowania tokenów](https://ap.ksef.mf.gov.pl/web/tokens/generate-token)
 - [Test environment](https://api-test.ksef.mf.gov.pl)
+
+## Praktyczne workflow'i
+
+### 1. Generowanie faktury, walidacja i wizualizacja
+
+```bash
+# 1. Przygotuj dane w pliku JSON
+# 2. Wygeneruj XML
+ksef-cli generate -i my_invoice.json -o faktura.xml
+
+# 3. Waliduj format
+ksef-cli validate -f faktura.xml
+
+# 4. Utwórz PDF do wydruku/wysyłki
+ksef-cli visualize -i faktura.xml -o faktura.pdf
+```
+
+### 2. Pobieranie faktury z KSeF
+
+```bash
+# Pobierz listę faktur z ostatniego miesiąca
+ksef-cli list-invoices -n 1234567890 -t $TOKEN \
+  --date-from "2026-03-01T00:00:00.000Z" \
+  --date-to "2026-03-31T23:59:59.999Z" \
+  --output faktury_marzec.json
+
+# Z otrzymanego JSON weź ksefReferenceNumber
+# Pobierz konkretną fakturę XML
+ksef-cli get-invoice -n 1234567890 -t $TOKEN \
+  -k "123-456-789-10-2026-0000001" \
+  -o pobrana_faktura.xml
+
+# Wizualizuj pobraną fakturę
+ksef-cli visualize -i pobrana_faktura.xml -o pobrana_faktura.pdf
+```
+
+### 3. Filtrowanie faktur przed poborem
+
+```bash
+# Pobierz tylko faktury VAT powyżej 1000 PLN
+ksef-cli list-invoices -n 1234567890 -t $TOKEN \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z" \
+  --subject-type Subject1 \
+  --date-type Issue \
+  --invoice-type Vat \
+  --amount-type Brutto \
+  --amount-from 1000 \
+  --output high_value_invoices.json
+```
+
+### 4. Debugowanie problemów
+
+```bash
+# Włącz debug mode dla szczegółowych informacji
+ksef-cli get-invoice -n 1234567890 -t $TOKEN \
+  -k "123-456-789-10-2026-0000001" \
+  --debug
+
+# Debug info pojawia się na stderr (STDERR), 
+# dane na stdout (STDOUT), możesz je oddzielić:
+ksef-cli get-invoice -n 1234567890 -t $TOKEN \
+  -k "123-456-789-10-2026-0000001" \
+  --debug \
+  -o faktura.xml 2> debug.log
+```
 
 ## Przykłady
 

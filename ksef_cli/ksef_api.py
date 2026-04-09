@@ -90,6 +90,7 @@ class KSeFClient:
 
         if self.debug:
             import sys
+
             print(f"\n[DEBUG] {method} {url}", file=sys.stderr)
             if body:
                 print(f"[DEBUG] Request body: {body.decode('utf-8')}", file=sys.stderr)
@@ -102,12 +103,17 @@ class KSeFClient:
                 response_data = json.loads(response.read().decode("utf-8"))
                 if self.debug:
                     import sys
-                    print(f"[DEBUG] Response: {json.dumps(response_data, ensure_ascii=False)}", file=sys.stderr)
+
+                    print(
+                        f"[DEBUG] Response: {json.dumps(response_data, ensure_ascii=False)}",
+                        file=sys.stderr,
+                    )
                 return response_data
         except urllib.error.HTTPError as exc:
             error_body = exc.read().decode("utf-8")
             if self.debug:
                 import sys
+
                 print(f"[DEBUG] HTTP {exc.code} response: {error_body}", file=sys.stderr)
             raise KSeFAPIError(f"HTTP {exc.code} from {url}: {error_body}") from exc
         except urllib.error.URLError as exc:
@@ -142,6 +148,7 @@ class KSeFClient:
 
         if self.debug:
             import sys
+
             print(f"\n[DEBUG] {method} {url}", file=sys.stderr)
             if extra_headers:
                 print(f"[DEBUG] Extra headers: {extra_headers}", file=sys.stderr)
@@ -152,12 +159,14 @@ class KSeFClient:
                 response_body = response.read().decode("utf-8")
                 if self.debug:
                     import sys
+
                     print(f"[DEBUG] Response: {response_body[:500]}...", file=sys.stderr)
                 return response_body
         except urllib.error.HTTPError as exc:
             error_body = exc.read().decode("utf-8")
             if self.debug:
                 import sys
+
                 print(f"[DEBUG] HTTP {exc.code} response: {error_body}", file=sys.stderr)
             raise KSeFAPIError(f"HTTP {exc.code} from {url}: {error_body}") from exc
         except urllib.error.URLError as exc:
