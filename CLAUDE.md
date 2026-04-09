@@ -92,32 +92,51 @@ Optional filters (all configurable via CLI):
 - `invoiceTypes`: List of invoice types (e.g., ["Vat"])
 - `hasAttachment`: Boolean
 
+### Get Single Invoice
+
+**GET /v2/invoices/ksef/{ksefNumber}** — Retrieve specific invoice by KSeF number (XML)
+
+- Path parameter: `ksefNumber` (35-36 characters)
+- Returns: Full invoice XML document (application/xml content-type)
+- Response header: `x-ms-meta-hash` contains SHA-256 hash of invoice (Base64)
+- Error codes:
+  - 21164: Invoice not found
+  - 21165: Invoice processed but not yet available
+  - 21405: Input validation error
+
 **Rate limit**: 20 requests per hour per token
 
 ### Code Structure
 
 **ksef_cli/ksef_api.py** — KSeF API client
-- `KSeFClient` class: Main client with authentication and invoice listing
+- `KSeFClient` class: Main client with authentication and invoice operations
 - `_request()`: Low-level HTTP request handler (uses urllib)
 - `_get_public_key()`: Fetches and caches RSA public key
 - `_encrypt_token()`: RSA-OAEP encryption with MGF1-SHA256
 - `authenticate()`: Full 6-step auth flow
 - `_wait_for_auth_completion()`: Polling with exponential backoff
 - `list_invoices()`: Query invoices with configurable filters
+- `get_invoice()`: Retrieve specific invoice by KSeF number
 
 **ksef_cli/cli.py** — Click CLI commands
-- `list-invoices`: Main command for querying invoices
+- `list-invoices`: Query invoices with filters
   - Required: `-n/--nip`, `-t/--token`, `--date-from`, `--date-to`
   - Optional filters: `--subject-type` (default "Subject1"), `--date-type` (default "PermanentStorage"), `--invoicing-mode`, `--form-type`, `--amount-type`, `--amount-from`, `--amount-to`, `--currency` (multiple), `--invoice-type` (multiple), `--has-attachment`
   - Pagination: `--page-offset` (default 0), `--page-size` (default 100)
   - Debug: `--debug` flag prints HTTP method, URL, request body, and response JSON to stderr
   - Environment: `--test` flag uses test API (https://api-test.ksef.mf.gov.pl)
   - Output: `-o/--output` for file output, stdout default (JSON format)
+- `get-invoice`: Retrieve specific invoice by KSeF number
+  - Required: `-n/--nip`, `-t/--token`, `-k/--ksef-number`
+  - Environment: `--test` flag uses test API
+  - Debug: `--debug` flag enables debug output to stderr
+  - Output: `-o/--output` for file output, stdout default (JSON format)
 
-**tests/test_ksef_api.py** — Unit tests (28 tests)
-- Tests for `_request()`, authentication flow, invoice listing
+**tests/test_ksef_api.py** — Unit tests (36 tests)
+- Tests for `_request()`, authentication flow, invoice listing, invoice retrieval
 - Uses mocking for HTTP requests and certificate handling
 - Fixtures for challenge, auth, and redeem responses
+- Test classes: TestKSeFClientInit, TestKSeFClientRequest, TestKSeFClientAuthenticate, TestKSeFClientListInvoices, TestKSeFClientGetInvoice, TestListInvoicesCLI, TestGetInvoiceCLI
 
 ## Key Technical Notes
 
@@ -148,7 +167,7 @@ Optional filters (all configurable via CLI):
 ### Testing
 - Tests mock `_encrypt_token()` since real DER certificates can't be easily generated in fixtures
 - Tests use `patch.object(client, "_request")` to mock API responses
-- All 28 tests must pass before pushing changes
+- All 36 tests must pass before pushing changes
 
 ## Environment Setup
 

@@ -127,6 +127,25 @@ INVOICE_LIST_RESPONSE = {
     "isTruncated": False,
 }
 
+GET_INVOICE_RESPONSE_XML = """<?xml version="1.0" encoding="utf-8"?>
+<Invoice xmlns="http://ksef.mf.gov.pl/schema/v2/invoice">
+  <KSEFReferenceNumber>INV-001</KSEFReferenceNumber>
+  <InvoiceNumber>FV/2023/001</InvoiceNumber>
+  <InvoicingDate>2023-06-01T00:00:00.000Z</InvoicingDate>
+  <Seller>
+    <NIP>5260250274</NIP>
+    <Name>Test Company</Name>
+  </Seller>
+  <Buyer>
+    <NIP>9492107026</NIP>
+    <Name>Buyer Company</Name>
+  </Buyer>
+  <Gross>1230.00</Gross>
+  <Net>1000.00</Net>
+  <VAT>230.00</VAT>
+  <Currency>PLN</Currency>
+</Invoice>"""
+
 
 # ---------------------------------------------------------------------------
 # KSeFClient initialisation
@@ -160,6 +179,15 @@ def _make_urlopen_mock(response_data: dict):
     cm.__enter__ = MagicMock(return_value=cm)
     cm.__exit__ = MagicMock(return_value=False)
     cm.read.return_value = json.dumps(response_data).encode("utf-8")
+    return cm
+
+
+def _make_urlopen_mock_raw(response_text: str):
+    """Return a context-manager mock that simulates urlopen returning raw text (XML)."""
+    cm = MagicMock()
+    cm.__enter__ = MagicMock(return_value=cm)
+    cm.__exit__ = MagicMock(return_value=False)
+    cm.read.return_value = response_text.encode("utf-8")
     return cm
 
 
@@ -393,6 +421,77 @@ class TestKSeFClientListInvoices:
 
 
 # ---------------------------------------------------------------------------
+# KSeF Client – get_invoice method
+# ---------------------------------------------------------------------------
+
+
+class TestKSeFClientGetInvoice:
+    def test_returns_invoice_xml(self, client):
+        client.access_token = "TOKEN"
+
+        with patch("urllib.request.urlopen", return_value=_make_urlopen_mock_raw(GET_INVOICE_RESPONSE_XML)):
+            invoice = client.get_invoice(ksef_number="123-456-789-10-2023-0000001")
+
+        assert isinstance(invoice, str)
+        assert "INV-001" in invoice
+        assert "FV/2023/001" in invoice
+        assert "<Invoice" in invoice
+
+    def test_authenticates_automatically_when_no_token(self, client):
+        auth_mocks = [
+            _make_urlopen_mock(CHALLENGE_RESPONSE),
+            _make_urlopen_mock(AUTH_RESPONSE),
+            _make_urlopen_mock(AUTH_STATUS_RESPONSE),
+            _make_urlopen_mock(REDEEM_RESPONSE),
+            _make_urlopen_mock_raw(GET_INVOICE_RESPONSE_XML),
+        ]
+
+        with patch("urllib.request.urlopen", side_effect=auth_mocks):
+            with patch("ksef_cli.ksef_api.KSeFClient._encrypt_token", return_value="ENCRYPTED"):
+                invoice = client.get_invoice(ksef_number="123-456-789-10-2023-0000001")
+
+        assert client.access_token == "ACCESS_TOKEN_JWT_VALUE"
+        assert isinstance(invoice, str)
+        assert "INV-001" in invoice
+
+    def test_skips_auth_when_access_token_set(self, client):
+        client.access_token = "TOKEN"
+
+        with patch("urllib.request.urlopen", return_value=_make_urlopen_mock_raw(GET_INVOICE_RESPONSE_XML)):
+            invoice = client.get_invoice(ksef_number="123-456-789-10-2023-0000001")
+
+        assert isinstance(invoice, str)
+        assert "INV-001" in invoice
+
+    def test_sends_bearer_token_header(self, client):
+        client.access_token = "TOKEN"
+        requests = []
+
+        def capture_request(req, *args, **kwargs):
+            requests.append(req)
+            return _make_urlopen_mock_raw(GET_INVOICE_RESPONSE_XML)
+
+        with patch("urllib.request.urlopen", side_effect=capture_request):
+            client.get_invoice(ksef_number="123-456-789-10-2023-0000001")
+
+        assert "Authorization" in requests[0].headers
+        assert requests[0].headers["Authorization"] == "Bearer TOKEN"
+
+    def test_uses_correct_endpoint(self, client):
+        client.access_token = "TOKEN"
+        requests = []
+
+        def capture_request(req, *args, **kwargs):
+            requests.append(req)
+            return _make_urlopen_mock_raw(GET_INVOICE_RESPONSE_XML)
+
+        with patch("urllib.request.urlopen", side_effect=capture_request):
+            client.get_invoice(ksef_number="123-456-789-10-2023-0000001")
+
+        assert "/v2/invoices/ksef/123-456-789-10-2023-0000001" in requests[0].full_url
+
+
+# ---------------------------------------------------------------------------
 # CLI integration – list-invoices command
 # ---------------------------------------------------------------------------
 
@@ -583,6 +682,98 @@ class TestListInvoicesCLI:
                 "--nip",
                 "1234567890",
                 # missing --token, --date-from, --date-to
+            ],
+        )
+
+        assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# CLI integration – get-invoice command
+# ---------------------------------------------------------------------------
+
+
+class TestGetInvoiceCLI:
+    def _mock_all(self):
+        """Mock all requests for CLI test (auth flow + get invoice)."""
+        return [
+            _make_urlopen_mock(CHALLENGE_RESPONSE),
+            _make_urlopen_mock(AUTH_RESPONSE),
+            _make_urlopen_mock(AUTH_STATUS_RESPONSE),
+            _make_urlopen_mock(REDEEM_RESPONSE),
+            _make_urlopen_mock_raw(GET_INVOICE_RESPONSE_XML),
+        ]
+
+    def test_get_invoice_outputs_xml(self):
+        from click.testing import CliRunner
+
+        from ksef_cli.cli import cli
+
+        runner = CliRunner()
+        with patch("urllib.request.urlopen", side_effect=self._mock_all()):
+            with patch("ksef_cli.ksef_api.KSeFClient._encrypt_token", return_value="ENCRYPTED"):
+                result = runner.invoke(
+                    cli,
+                    [
+                        "get-invoice",
+                        "--nip",
+                        "1234567890",
+                        "--token",
+                        "secret",
+                        "--ksef-number",
+                        "123-456-789-10-2023-0000001",
+                    ],
+                )
+
+        assert result.exit_code == 0, f"Exit code {result.exit_code}: {result.output}"
+        assert "<?xml" in result.output
+        assert "INV-001" in result.output
+        assert "<Invoice" in result.output
+
+    def test_get_invoice_saves_to_file(self, tmp_path):
+        from click.testing import CliRunner
+
+        from ksef_cli.cli import cli
+
+        output_file = tmp_path / "invoice.xml"
+        runner = CliRunner()
+        with patch("urllib.request.urlopen", side_effect=self._mock_all()):
+            with patch("ksef_cli.ksef_api.KSeFClient._encrypt_token", return_value="ENCRYPTED"):
+                result = runner.invoke(
+                    cli,
+                    [
+                        "get-invoice",
+                        "--nip",
+                        "1234567890",
+                        "--token",
+                        "secret",
+                        "--ksef-number",
+                        "123-456-789-10-2023-0000001",
+                        "--output",
+                        str(output_file),
+                    ],
+                )
+
+        assert result.exit_code == 0
+        assert output_file.exists()
+        with open(output_file) as f:
+            content = f.read()
+        assert "<?xml" in content
+        assert "INV-001" in content
+
+    def test_get_invoice_missing_required_option(self):
+        from click.testing import CliRunner
+
+        from ksef_cli.cli import cli
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "get-invoice",
+                "--nip",
+                "1234567890",
+                # missing --token, --ksef-number
             ],
         )
 

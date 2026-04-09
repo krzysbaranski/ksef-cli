@@ -113,6 +113,56 @@ class KSeFClient:
         except urllib.error.URLError as exc:
             raise KSeFAPIError(f"Connection error: {exc.reason}") from exc
 
+    def _request_raw(
+        self,
+        method: str,
+        path: str,
+        extra_headers: Optional[Dict[str, str]] = None,
+    ) -> str:
+        """Execute an HTTP request and return raw response (for XML content).
+
+        Args:
+            method: HTTP method (``GET``, ``POST`` …).
+            path: API path, starting with ``/``.
+            extra_headers: Additional HTTP headers to send.
+
+        Returns:
+            Raw response body as string.
+
+        Raises:
+            KSeFAPIError: On any HTTP error or unexpected response.
+        """
+        url = f"{self.base_url}{path}"
+
+        headers: Dict[str, str] = {
+            "Accept": "application/xml",
+        }
+        if extra_headers:
+            headers.update(extra_headers)
+
+        if self.debug:
+            import sys
+            print(f"\n[DEBUG] {method} {url}", file=sys.stderr)
+            if extra_headers:
+                print(f"[DEBUG] Extra headers: {extra_headers}", file=sys.stderr)
+
+        req = urllib.request.Request(url, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req) as response:
+                response_body = response.read().decode("utf-8")
+                if self.debug:
+                    import sys
+                    print(f"[DEBUG] Response: {response_body[:500]}...", file=sys.stderr)
+                return response_body
+        except urllib.error.HTTPError as exc:
+            error_body = exc.read().decode("utf-8")
+            if self.debug:
+                import sys
+                print(f"[DEBUG] HTTP {exc.code} response: {error_body}", file=sys.stderr)
+            raise KSeFAPIError(f"HTTP {exc.code} from {url}: {error_body}") from exc
+        except urllib.error.URLError as exc:
+            raise KSeFAPIError(f"Connection error: {exc.reason}") from exc
+
     def _get_public_key(self) -> Any:
         """Retrieve KSeF RSA public key for token encryption.
 
@@ -392,3 +442,29 @@ class KSeFClient:
         )
 
         return response.get("invoices", [])
+
+    def get_invoice(self, ksef_number: str) -> str:
+        """Retrieve a specific invoice by KSeF number as XML.
+
+        Authenticates automatically if no access token is present.
+
+        Args:
+            ksef_number: KSeF invoice number (35-36 characters).
+
+        Returns:
+            Invoice XML document as string.
+
+        Raises:
+            KSeFAuthError: If authentication fails.
+            KSeFAPIError: On any HTTP/network error.
+        """
+        if not self.access_token:
+            self.authenticate()
+
+        response = self._request_raw(
+            "GET",
+            f"/v2/invoices/ksef/{ksef_number}",
+            extra_headers={"Authorization": f"Bearer {self.access_token}"},
+        )
+
+        return response
