@@ -337,6 +337,7 @@ class TestInteractiveCommand:
 
         # Prepare input for interactive prompts
         input_data = [
+            "n",  # Czy masz plik szablonu? (No)
             "5260250274",  # Sprzedawca NIP
             "Moja Firma",  # Sprzedawca Nazwa
             "ul. Test 1",  # Sprzedawca Adres L1
@@ -356,6 +357,7 @@ class TestInteractiveCommand:
             "n",  # Nie dodawaj kolejnej pozycji
             "",  # Stopka faktury (opcjonalnie, pominięcie)
             str(tmp_path / "test_output.xml"),  # Nazwa pliku wyjściowego
+            "n",  # Czy chcesz wygenerować wizualizację PDF? (No)
         ]
 
         result = runner.invoke(cli, ["interactive"], input="\n".join(input_data))
@@ -371,6 +373,7 @@ class TestInteractiveCommand:
         runner = CliRunner()
 
         input_data = [
+            "n",  # Czy masz plik szablonu? (No)
             "5260250274",
             "Test Firma",
             "ul. Test 1",
@@ -390,6 +393,7 @@ class TestInteractiveCommand:
             "n",
             "",  # Stopka faktury (opcjonalnie, pominięcie)
             str(tmp_path / "output.xml"),
+            "n",  # Czy chcesz wygenerować wizualizację PDF? (No)
         ]
 
         result = runner.invoke(cli, ["interactive"], input="\n".join(input_data))
@@ -412,6 +416,7 @@ class TestInteractiveCommand:
         runner = CliRunner()
 
         input_data = [
+            "n",  # Czy masz plik szablonu? (No)
             "5260250274",
             "Test Firma",
             "ul. Test 1",
@@ -437,6 +442,7 @@ class TestInteractiveCommand:
             "n",  # No more items
             "",  # Stopka faktury (opcjonalnie, pominięcie)
             str(tmp_path / "output.xml"),
+            "n",  # Czy chcesz wygenerować wizualizację PDF? (No)
         ]
 
         result = runner.invoke(cli, ["interactive"], input="\n".join(input_data))
@@ -943,6 +949,7 @@ class TestInteractiveCommandExceptionHandlers:
 
         input_data = "\n".join(
             [
+                "n",  # Czy masz plik szablonu? (No)
                 "5260250274",  # sprzedawca NIP
                 "Moja Firma",  # sprzedawca Nazwa
                 "ul. Testowa 1",  # sprzedawca Adres (linia 1)
@@ -961,7 +968,8 @@ class TestInteractiveCommandExceptionHandlers:
                 "23",  # Stawka VAT
                 "N",  # Dodać kolejną pozycję? (No)
                 "",  # Stopka faktury (optional) – trailing \n lets prompt complete
-                "",  # ensures newline after stopka so generuj is reached
+                "",  # Nazwa pliku wyjściowego
+                "",  # Czy chcesz wygenerować wizualizację PDF?
             ]
         )
 
@@ -1143,6 +1151,7 @@ class TestInteractiveCommandValidationError:
         # NIP '123' is too short (must be exactly 10 chars) so will trigger ValidationError
         input_data = "\n".join(
             [
+                "n",  # Czy masz plik szablonu? (No)
                 "123",  # Invalid NIP - too short (must be 10 chars)
                 "Firma",
                 "ul. Testowa 1",
@@ -1179,6 +1188,7 @@ class TestInteractiveCommandValidationError:
         # Provide valid input data - but patch open to fail on write
         input_data = "\n".join(
             [
+                "n",  # Czy masz plik szablonu? (No)
                 "5260250274",
                 "Firma",
                 "ul. Testowa 1",
@@ -1320,6 +1330,7 @@ class TestInteractiveCommandAbort:
 
         input_data = "\n".join(
             [
+                "n",  # Czy masz plik szablonu? (No)
                 "5260250274",
                 "Firma",
                 "ul. Testowa 1",

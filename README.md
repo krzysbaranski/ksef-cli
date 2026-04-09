@@ -138,9 +138,62 @@ ksef-cli generate -i invoice_data.json -o faktura.xml
 
 ### Generowanie faktury interaktywnie
 
+Tryb interaktywny z obsługą szablonów:
+
 ```bash
 ksef-cli interactive
 ```
+
+Aplikacja zapyta się, czy chcesz użyć szablonu istniejącej faktury:
+
+```
+Czy masz plik szablonu faktury? [y/N]: y
+Ścieżka do pliku szablonu (XML): moje_faktury/poprzednia.xml
+✓ Szablon załadowany z: moje_faktury/poprzednia.xml
+```
+
+#### Workflow szablonu
+
+Dla każdej sekcji (sprzedawca, nabywca, dane faktury, pozycje, stopka):
+1. **Zachować** — Użyj danych z szablonu (domyślnie)
+2. **Edytować** — Zmień wybrany fragment
+3. **Pozycje** — Keep/Edit/Delete (k/e/u) dla każdej pozycji, dodaj nowe
+
+#### Wieloliniowa stopka faktury
+
+Stopka faktury obsługuje wiele linii. Przy pytaniu o stopkę:
+- Wpisz każdą linię oddzielnie (Enter między liniami)
+- Aby zakończyć edycję: wciśnij **Enter na pustej linii** LUB **Ctrl+D**
+- Aby anulować edycję: wciśnij **Ctrl+C** w dowolnym momencie
+
+Przykład z Enter na pustej linii:
+
+```bash
+Stopka faktury (opcjonalnie)
+: Dziękujemy za współpracę!
+: Zapraszamy do ponownego kontaktu.
+: 
+```
+
+Przykład z Ctrl+D:
+
+```bash
+Stopka faktury (opcjonalnie)
+: Dziękujemy za współpracę!
+: Zapraszamy do ponownego kontaktu.
+<Ctrl+D>
+```
+
+Aby całkowicie pominąć stopkę, wciśnij Ctrl+D bez wpisywania żadnej treści.
+
+#### Automatyczne tworzenie katalogów
+
+Jeśli plik wyjściowy zawiera ścieżkę (np. `moje_faktury/2025/faktura.xml`),
+aplikacja automatycznie stworzy brakujące katalogi.
+
+#### Wizualizacja PDF na koniec
+
+Po wygenerowaniu faktury aplikacja zapyta, czy chcesz od razu wygenerować wizualizację PDF.
 
 ### Walidacja faktury
 
