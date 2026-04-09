@@ -63,6 +63,7 @@ def generate(input_file, output_file):
 
         # Create directory if it doesn't exist
         import os
+
         output_dir = os.path.dirname(output_file)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
@@ -134,9 +135,7 @@ def interactive():
             sprzedawca_nip = click.prompt("NIP")
             sprzedawca_nazwa = click.prompt("Nazwa")
             sprzedawca_adres_l1 = click.prompt("Adres (linia 1)")
-            sprzedawca_adres_l2 = click.prompt(
-                "Adres (linia 2)", default="", show_default=False
-            )
+            sprzedawca_adres_l2 = click.prompt("Adres (linia 2)", default="", show_default=False)
 
             # Nabywca
             click.echo("\nDANE NABYWCY:")
@@ -227,6 +226,7 @@ def interactive():
 
         # Create directory if it doesn't exist
         import os
+
         output_dir = os.path.dirname(output_file)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
@@ -238,9 +238,7 @@ def interactive():
 
         # Offer visualization
         if click.confirm("\nCzy chcesz wygenerować wizualizację PDF?", default=True):
-            pdf_file = click.prompt(
-                "Nazwa pliku PDF", default=output_file.replace(".xml", ".pdf")
-            )
+            pdf_file = click.prompt("Nazwa pliku PDF", default=output_file.replace(".xml", ".pdf"))
             try:
                 from .pdf_generator import KSeFPDFGenerator
 

@@ -77,9 +77,11 @@ class TestInteractiveTemplate:
         template = InteractiveTemplate()
         podmiot = sample_invoice.sprzedawca
 
-        with patch("click.echo"), patch("click.confirm", return_value=False), patch(
-            "click.prompt"
-        ) as mock_prompt:
+        with (
+            patch("click.echo"),
+            patch("click.confirm", return_value=False),
+            patch("click.prompt") as mock_prompt,
+        ):
             mock_prompt.side_effect = [
                 "1234567890",
                 "New Name",
@@ -114,9 +116,11 @@ class TestInteractiveTemplate:
         mock_date = MagicMock()
         mock_date.date.return_value = date(2026, 2, 15)
 
-        with patch("click.echo"), patch("click.confirm", return_value=False), patch(
-            "click.prompt"
-        ) as mock_prompt:
+        with (
+            patch("click.echo"),
+            patch("click.confirm", return_value=False),
+            patch("click.prompt") as mock_prompt,
+        ):
             mock_prompt.side_effect = [
                 "FV/002/2026",
                 mock_date,
@@ -185,8 +189,10 @@ class TestInteractiveTemplate:
         template = InteractiveTemplate()
         stopka = "Old footer"
 
-        with patch("click.echo"), patch("click.confirm", return_value=False), patch.object(
-            template, "_prompt_multiline", return_value="New footer"
+        with (
+            patch("click.echo"),
+            patch("click.confirm", return_value=False),
+            patch.object(template, "_prompt_multiline", return_value="New footer"),
         ):
             result = template._process_stopka(stopka)
 
@@ -196,8 +202,9 @@ class TestInteractiveTemplate:
         """Test adding footer when none exists"""
         template = InteractiveTemplate()
 
-        with patch("click.echo"), patch.object(
-            template, "_prompt_multiline", return_value="New footer"
+        with (
+            patch("click.echo"),
+            patch.object(template, "_prompt_multiline", return_value="New footer"),
         ):
             result = template._process_stopka(None)
 
@@ -207,9 +214,7 @@ class TestInteractiveTemplate:
         """Test when no footer is added"""
         template = InteractiveTemplate()
 
-        with patch("click.echo"), patch.object(
-            template, "_prompt_multiline", return_value=None
-        ):
+        with patch("click.echo"), patch.object(template, "_prompt_multiline", return_value=None):
             result = template._process_stopka(None)
 
             assert result is None
@@ -268,7 +273,9 @@ class TestInteractiveTemplate:
             mock_prompt.side_effect = [
                 "Linia 1",
                 "Linia 2",
-            ] + [EOFError()] * 10  # Multiple EOFErrors just in case
+            ] + [
+                EOFError()
+            ] * 10  # Multiple EOFErrors just in case
 
             result = template._prompt_multiline("Test prompt")
 
@@ -279,9 +286,11 @@ class TestInteractiveTemplate:
         """Test multiline prompt with empty line confirmation"""
         template = InteractiveTemplate()
 
-        with patch("click.echo"), patch("click.prompt") as mock_prompt, patch(
-            "click.confirm"
-        ) as mock_confirm:
+        with (
+            patch("click.echo"),
+            patch("click.prompt") as mock_prompt,
+            patch("click.confirm") as mock_confirm,
+        ):
             # Two lines, empty line, confirm finish
             mock_prompt.side_effect = ["Linia 1", "Linia 2", ""]
             mock_confirm.return_value = True
@@ -336,9 +345,11 @@ class TestInteractiveTemplate:
 
         template = InteractiveTemplate()
 
-        with patch("click.echo"), patch("click.confirm") as mock_confirm, patch(
-            "click.prompt"
-        ) as mock_prompt:
+        with (
+            patch("click.echo"),
+            patch("click.confirm") as mock_confirm,
+            patch("click.prompt") as mock_prompt,
+        ):
             confirm_returns = [True, True, True, False, True]
             mock_confirm.side_effect = confirm_returns
 

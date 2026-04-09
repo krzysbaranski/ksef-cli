@@ -14,14 +14,10 @@ class InteractiveTemplate:
         click.echo("\n=== Generator Faktur KSeF - Tryb szablonu ===\n")
 
         # Process seller
-        sprzedawca = self._process_podmiot(
-            "DANE SPRZEDAWCY", template.sprzedawca, is_seller=True
-        )
+        sprzedawca = self._process_podmiot("DANE SPRZEDAWCY", template.sprzedawca, is_seller=True)
 
         # Process buyer
-        nabywca = self._process_podmiot(
-            "DANE NABYWCY", template.nabywca, is_seller=False
-        )
+        nabywca = self._process_podmiot("DANE NABYWCY", template.nabywca, is_seller=False)
 
         # Process invoice header
         faktura = self._process_faktura_header(template.faktura)
@@ -47,9 +43,7 @@ class InteractiveTemplate:
             ),
         )
 
-    def _process_podmiot(
-        self, title: str, podmiot: Podmiot, is_seller: bool = False
-    ) -> Podmiot:
+    def _process_podmiot(self, title: str, podmiot: Podmiot, is_seller: bool = False) -> Podmiot:
         """Process subject (seller/buyer) with template."""
         click.echo(f"{title}:")
         self._show_podmiot(podmiot)
@@ -59,9 +53,7 @@ class InteractiveTemplate:
             nip = click.prompt("NIP")
             nazwa = click.prompt("Nazwa")
             adres_l1 = click.prompt("Adres (linia 1)")
-            adres_l2 = click.prompt(
-                "Adres (linia 2)", default="", show_default=False
-            )
+            adres_l2 = click.prompt("Adres (linia 2)", default="", show_default=False)
 
             return Podmiot(
                 nip=nip,
@@ -100,9 +92,7 @@ class InteractiveTemplate:
                 type=click.DateTime(["%Y-%m-%d"]),
                 default=faktura.data_wystawienia.isoformat(),
             )
-            miejsce = click.prompt(
-                "Miejsce wystawienia", default=faktura.miejsce_wystawienia
-            )
+            miejsce = click.prompt("Miejsce wystawienia", default=faktura.miejsce_wystawienia)
             data_sprz = click.prompt(
                 "Data sprzedaży (RRRR-MM-DD)",
                 type=click.DateTime(["%Y-%m-%d"]),
@@ -168,9 +158,7 @@ class InteractiveTemplate:
                 jm = click.prompt("Jednostka miary", default=poz.jm)
                 ilosc = click.prompt("Ilość", type=float, default=poz.ilosc)
                 cena = click.prompt("Cena netto", type=float, default=poz.cena_netto)
-                stawka = click.prompt(
-                    "Stawka VAT (%)", type=int, default=poz.stawka_vat
-                )
+                stawka = click.prompt("Stawka VAT (%)", type=int, default=poz.stawka_vat)
 
                 wartosc_netto = round(ilosc * cena, 2)
 
@@ -220,9 +208,7 @@ class InteractiveTemplate:
         """Display line item information."""
         click.echo(f"  Nazwa: {pozycja.nazwa}")
         click.echo(f"  Jednostka: {pozycja.jm}, Ilość: {pozycja.ilosc}")
-        click.echo(
-            f"  Cena: {pozycja.cena_netto} PLN netto, Wartość: {pozycja.wartosc_netto} PLN"
-        )
+        click.echo(f"  Cena: {pozycja.cena_netto} PLN netto, Wartość: {pozycja.wartosc_netto} PLN")
         click.echo(f"  VAT: {pozycja.stawka_vat}%")
         click.echo()
 
@@ -241,9 +227,7 @@ class InteractiveTemplate:
             )
             return stopka_input if stopka_input else None
 
-        stopka_input = self._prompt_multiline(
-            "Stopka faktury (opcjonalnie, Ctrl+D aby zakończyć)"
-        )
+        stopka_input = self._prompt_multiline("Stopka faktury (opcjonalnie, Ctrl+D aby zakończyć)")
         return stopka_input if stopka_input else None
 
     def _prompt_multiline(self, prompt_text: str) -> str | None:
