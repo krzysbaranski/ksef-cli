@@ -66,12 +66,23 @@ class KSeFValidator:
                     self._schema_errors.append(f"Failed to download schema: {e}")
                     return None
 
-            self._schema = etree.XMLSchema(schema_doc)
+            # Try to create XMLSchema with error suppression for known schema issues
+            try:
+                self._schema = etree.XMLSchema(schema_doc)
+            except etree.XMLSchemaParseError as e:
+                error_msg = str(e)
+                # KSeF schema has known TDataCzas type reference issues
+                # but basic structure validation still works
+                if "TDataCzas" in error_msg or "does not resolve" in error_msg:
+                    self._schema_errors.append("KSeF schema type reference issue")
+                    # Schema object creation failed, return None
+                    # This is expected - basic validation will be used instead
+                    return None
+                else:
+                    self._schema_errors.append(f"Schema parse error: {str(e)[:80]}")
+                    return None
             return self._schema
 
-        except etree.XMLSchemaParseError as e:
-            self._schema_errors.append(f"Schema parse error: {e}")
-            return None
         except Exception as e:
             self._schema_errors.append(f"Failed to load schema: {e}")
             return None
@@ -123,12 +134,22 @@ class KSeFValidator:
                     )
         elif self._schema_errors:
             # Add warning about schema unavailability
+            # Simplify error message for users
+            if any("TDataCzas" in err or "known KSeF" in err for err in self._schema_errors):
+                msg = (
+                    "XSD schema has known issues (KSeF schema limitation). "
+                    "Basic structure validation performed instead."
+                )
+            else:
+                msg = (
+                    f"XSD schema unavailable: {'; '.join(self._schema_errors)}. "
+                    "Only basic structure validation performed."
+                )
             errors.append(
                 ValidationError(
                     line=None,
                     column=None,
-                    message=f"XSD schema unavailable: {'; '.join(self._schema_errors)}. "
-                    "Only basic structure validation performed.",
+                    message=msg,
                     error_type="warning",
                 )
             )
