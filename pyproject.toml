@@ -86,26 +86,35 @@ exclude_lines = [
 ]
 
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=65", "wheel", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools-scm]
+version_file = "ksef_cli/__version__.py"
+version_file_template = "__version__ = '{version}'"
 
 [project]
 name = "ksef-cli"
 version = "1.0.0rc2"
-description = "CLI tool for generating KSeF (Polish National e-Invoice System) invoices"
+description = "CLI tool for generating, managing, and downloading KSeF (Polish National e-Invoice System) invoices"
 readme = "README.md"
 requires-python = ">=3.13,<4"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
 authors = [
+    {name = "Krzysztof Baranski", email = "baranski5@gmail.com"},
     {name = "KSeF CLI Contributors"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Topic :: Office/Business :: Financial",
 ]
 dependencies = [
     "click>=8.0.0",
@@ -116,6 +125,12 @@ dependencies = [
     "pillow>=10.0.0",
     "cryptography>=41.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/krzysbaranski/ksef-cli"
+Documentation = "https://github.com/krzysbaranski/ksef-cli#readme"
+Repository = "https://github.com/krzysbaranski/ksef-cli.git"
+Issues = "https://github.com/krzysbaranski/ksef-cli/issues"
 
 [project.optional-dependencies]
 dev = [
