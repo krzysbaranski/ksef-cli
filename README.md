@@ -31,7 +31,6 @@ poetry install
 - `get-invoice`      — Pobierz konkretną fakturę XML
 
 **GENEROWANIE FAKTUR:**
-- `generate`         — Wygeneruj XML z pliku JSON
 - `interactive`      — Wygeneruj XML interaktywnie (pytania)
 
 **WALIDACJA I WIZUALIZACJA:**
@@ -130,12 +129,6 @@ ksef-cli get-invoice \
   -o faktura.xml
 ```
 
-### Generowanie faktury z pliku JSON
-
-```bash
-ksef-cli generate -i invoice_data.json -o faktura.xml
-```
-
 ### Generowanie faktury interaktywnie
 
 Tryb interaktywny z obsługą szablonów:
@@ -209,16 +202,6 @@ Generowanie wizualizacji PDF z pliku XML faktury KSeF:
 ksef-cli visualize -i faktura.xml -o faktura.pdf
 ```
 
-Można również połączyć generowanie XML i PDF:
-
-```bash
-# Wygeneruj XML
-ksef-cli generate -i invoice_data.json -o faktura.xml
-
-# Wygeneruj PDF z XML
-ksef-cli visualize -i faktura.xml -o faktura.pdf
-```
-
 ## Format danych wejściowych (JSON)
 
 ```json
@@ -283,21 +266,7 @@ Komenda `list-invoices` korzysta z **token-based authentication** (API v2 KSeF):
 
 ## Praktyczne workflow'i
 
-### 1. Generowanie faktury, walidacja i wizualizacja
-
-```bash
-# 1. Przygotuj dane w pliku JSON
-# 2. Wygeneruj XML
-ksef-cli generate -i my_invoice.json -o faktura.xml
-
-# 3. Waliduj format
-ksef-cli validate -f faktura.xml
-
-# 4. Utwórz PDF do wydruku/wysyłki
-ksef-cli visualize -i faktura.xml -o faktura.pdf
-```
-
-### 2. Pobieranie faktury z KSeF
+### 1. Pobieranie faktury z KSeF
 
 ```bash
 # Pobierz listę faktur z ostatniego miesiąca
@@ -316,7 +285,7 @@ ksef-cli get-invoice -n 1234567890 -t $TOKEN \
 ksef-cli visualize -i pobrana_faktura.xml -o pobrana_faktura.pdf
 ```
 
-### 3. Filtrowanie faktur przed poborem
+### 2. Filtrowanie faktur przed poborem
 
 ```bash
 # Pobierz tylko faktury VAT powyżej 1000 PLN
@@ -331,7 +300,7 @@ ksef-cli list-invoices -n 1234567890 -t $TOKEN \
   --output high_value_invoices.json
 ```
 
-### 4. Debugowanie problemów
+### 3. Debugowanie problemów
 
 ```bash
 # Włącz debug mode dla szczegółowych informacji
