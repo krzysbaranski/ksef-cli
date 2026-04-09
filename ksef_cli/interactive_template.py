@@ -247,23 +247,25 @@ class InteractiveTemplate:
         return stopka_input if stopka_input else None
 
     def _prompt_multiline(self, prompt_text: str) -> str | None:
-        """Prompt for multiline input (lines separated by Enter, end with Ctrl+D)."""
+        """Prompt for multiline input (lines separated by Enter, end with Ctrl+D or empty line)."""
         click.echo(prompt_text)
         lines = []
         try:
             while True:
-                line = click.prompt("", default="", show_default=False)
-                if line:
-                    lines.append(line)
-                elif lines:
-                    # Empty line after content - ask if done
-                    if click.confirm("Zakończyć edycję?", default=True):
+                try:
+                    line = click.prompt("", default="", show_default=False)
+                    if line:
+                        lines.append(line)
+                    elif lines:
+                        # Empty line after content - finish input
                         break
-                else:
-                    # Empty line at start - skip
-                    pass
-        except EOFError:
-            # Ctrl+D pressed
-            pass
+                    # else: empty line at start - continue prompting
+                except EOFError:
+                    # Ctrl+D pressed - finish input with collected lines
+                    break
+        except KeyboardInterrupt:
+            # Ctrl+C pressed - abort and return None
+            click.echo()
+            return None
 
         return "\n".join(lines) if lines else None

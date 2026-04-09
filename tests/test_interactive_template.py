@@ -354,3 +354,29 @@ class TestInteractiveTemplate:
             assert result.faktura.pozycje[0].nazwa == "Item 1"
             assert result.faktura.pozycje[1].nr == 2
             assert result.faktura.pozycje[1].nazwa == "Item 3"
+
+    def test_prompt_multiline_with_keyboard_interrupt(self):
+        """Test multiline prompt handling Ctrl+C (KeyboardInterrupt)"""
+        template = InteractiveTemplate()
+
+        with patch("click.echo"), patch("click.prompt") as mock_prompt:
+            # First line succeeds, second raises KeyboardInterrupt
+            mock_prompt.side_effect = ["First line", KeyboardInterrupt()]
+
+            result = template._prompt_multiline("Test prompt")
+
+            # Should return None when interrupted
+            assert result is None
+
+    def test_prompt_multiline_empty_lines_ignored(self):
+        """Test that empty lines at start are skipped"""
+        template = InteractiveTemplate()
+
+        with patch("click.echo"), patch("click.prompt") as mock_prompt:
+            # Empty line, then content, then finish
+            mock_prompt.side_effect = ["", "Content line", ""]
+
+            result = template._prompt_multiline("Test prompt")
+
+            # Should return the content (empty lines at start are ignored)
+            assert result == "Content line"

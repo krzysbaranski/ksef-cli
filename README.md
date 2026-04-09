@@ -163,14 +163,28 @@ Dla każdej sekcji (sprzedawca, nabywca, dane faktury, pozycje, stopka):
 
 Stopka faktury obsługuje wiele linii. Przy pytaniu o stopkę:
 - Wpisz każdą linię oddzielnie (Enter między liniami)
-- Wciśnij Ctrl+D aby zakończyć edycję
+- Aby zakończyć edycję: wciśnij **Enter na pustej linii** LUB **Ctrl+D**
+- Aby anulować edycję: wciśnij **Ctrl+C** w dowolnym momencie
+
+Przykład z Enter na pustej linii:
 
 ```bash
-Stopka faktury (opcjonalnie, Ctrl+D aby zakończyć)
-Dziękujemy za współpracę!
-Zapraszamy do ponownego kontaktu.
+Stopka faktury (opcjonalnie)
+: Dziękujemy za współpracę!
+: Zapraszamy do ponownego kontaktu.
+: 
+```
+
+Przykład z Ctrl+D:
+
+```bash
+Stopka faktury (opcjonalnie)
+: Dziękujemy za współpracę!
+: Zapraszamy do ponownego kontaktu.
 <Ctrl+D>
 ```
+
+Aby całkowicie pominąć stopkę, wciśnij Ctrl+D bez wpisywania żadnej treści.
 
 #### Automatyczne tworzenie katalogów
 
