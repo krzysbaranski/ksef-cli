@@ -202,49 +202,6 @@ Generowanie wizualizacji PDF z pliku XML faktury KSeF:
 ksef-cli visualize -i faktura.xml -o faktura.pdf
 ```
 
-## Format danych wejściowych (JSON)
-
-```json
-{
-  "sprzedawca": {
-    "nip": "5260250274",
-    "nazwa": "test 1",
-    "adres": {
-      "kod_kraju": "PL",
-      "adres_l1": "adres 1",
-      "adres_l2": "test"
-    }
-  },
-  "nabywca": {
-    "nip": "9492107026",
-    "nazwa": "X-Kom test ksef",
-    "adres": {
-      "kod_kraju": "PL",
-      "adres_l1": "test 1ksef"
-    }
-  },
-  "faktura": {
-    "numer": "a123",
-    "data_wystawienia": "2026-01-30",
-    "miejsce_wystawienia": "Warszawa",
-    "data_sprzedazy": "2026-01-31",
-    "waluta": "PLN",
-    "pozycje": [
-      {
-        "nr": 1,
-        "nazwa": "Usasdf",
-        "jm": "h",
-        "ilosc": 1,
-        "cena_netto": 100.00,
-        "wartosc_netto": 100.00,
-        "stawka_vat": 23
-      }
-    ],
-    "forma_platnosci": "6"
-  }
-}
-```
-
 ## Autentykacja KSeF
 
 Komenda `list-invoices` korzysta z **token-based authentication** (API v2 KSeF):
