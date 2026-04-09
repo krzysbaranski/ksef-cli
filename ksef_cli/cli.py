@@ -61,6 +61,12 @@ def generate(input_file, output_file):
         generator = KSeFGenerator()
         xml = generator.generuj(faktura_ksef)
 
+        # Create directory if it doesn't exist
+        import os
+        output_dir = os.path.dirname(output_file)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+
         # Zapisz do pliku
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(xml)
@@ -91,100 +97,158 @@ def generate(input_file, output_file):
 
 @cli.command()
 def interactive():
-    """Tryb interaktywny - generuje fakturę krok po kroku"""
+    """Tryb interaktywny - generuje fakturę z szablonu lub od zera"""
     try:
-        click.echo("=== Generator Faktur KSeF - Tryb Interaktywny ===\n")
+        from .interactive_template import InteractiveTemplate
+        from .template_loader import TemplateLoader
 
-        # Sprzedawca
-        click.echo("DANE SPRZEDAWCY:")
-        sprzedawca_nip = click.prompt("NIP")
-        sprzedawca_nazwa = click.prompt("Nazwa")
-        sprzedawca_adres_l1 = click.prompt("Adres (linia 1)")
-        sprzedawca_adres_l2 = click.prompt("Adres (linia 2)", default="", show_default=False)
+        # Ask about template
+        use_template = click.confirm("Czy masz plik szablonu faktury?", default=False)
 
-        # Nabywca
-        click.echo("\nDANE NABYWCY:")
-        nabywca_nip = click.prompt("NIP")
-        nabywca_nazwa = click.prompt("Nazwa")
-        nabywca_adres_l1 = click.prompt("Adres (linia 1)")
+        if use_template:
+            # Load template from XML
+            template_file = click.prompt("Ścieżka do pliku szablonu (XML)")
 
-        # Faktura
-        click.echo("\nDANE FAKTURY:")
-        numer = click.prompt("Numer faktury")
-        data_wyst = click.prompt("Data wystawienia (RRRR-MM-DD)", type=click.DateTime(["%Y-%m-%d"]))
-        miejsce = click.prompt("Miejsce wystawienia")
-        data_sprz = click.prompt("Data sprzedaży (RRRR-MM-DD)", type=click.DateTime(["%Y-%m-%d"]))
+            try:
+                loader = TemplateLoader()
+                template = loader.load_from_xml(template_file)
+                click.echo(f"✓ Szablon załadowany z: {template_file}\n")
 
-        # Pozycje
-        pozycje: list[PozycjaFaktury] = []
-        click.echo("\nPOZYCJE FAKTURY:")
-        while True:
-            nr_poz = len(pozycje) + 1
-            click.echo(f"\nPozycja #{nr_poz}:")
-            nazwa = click.prompt("Nazwa")
-            jm = click.prompt("Jednostka miary", default="szt")
-            ilosc = click.prompt("Ilość", type=float)
-            cena = click.prompt("Cena netto", type=float)
-            stawka = click.prompt("Stawka VAT (%)", type=int, default="23")
+                # Process template with user interactions
+                processor = InteractiveTemplate()
+                faktura_ksef = processor.process_template(template)
 
-            wartosc_netto = round(ilosc * cena, 2)
+            except FileNotFoundError as e:
+                click.echo(f"✗ {e}", err=True)
+                raise click.Abort()
+            except ValueError as e:
+                click.echo(f"✗ Błąd ładowania szablonu: {e}", err=True)
+                raise click.Abort()
 
-            pozycje.append(
-                PozycjaFaktury(
-                    nr=nr_poz,
-                    nazwa=nazwa,
-                    jm=jm,
-                    ilosc=ilosc,
-                    cena_netto=cena,
-                    wartosc_netto=wartosc_netto,
-                    stawka_vat=stawka,
-                )
+        else:
+            # Original interactive mode - create from scratch
+            click.echo("=== Generator Faktur KSeF - Tryb Interaktywny ===\n")
+
+            # Sprzedawca
+            click.echo("DANE SPRZEDAWCY:")
+            sprzedawca_nip = click.prompt("NIP")
+            sprzedawca_nazwa = click.prompt("Nazwa")
+            sprzedawca_adres_l1 = click.prompt("Adres (linia 1)")
+            sprzedawca_adres_l2 = click.prompt(
+                "Adres (linia 2)", default="", show_default=False
             )
 
-            if not click.confirm("Dodać kolejną pozycję?", default=False):
-                break
+            # Nabywca
+            click.echo("\nDANE NABYWCY:")
+            nabywca_nip = click.prompt("NIP")
+            nabywca_nazwa = click.prompt("Nazwa")
+            nabywca_adres_l1 = click.prompt("Adres (linia 1)")
 
-        # Stopka faktury (opcjonalna)
-        stopka_faktury_input = click.prompt(
-            "\nStopka faktury (opcjonalnie, naciśnij Enter aby pominąć)",
-            default="",
-            show_default=False,
-        )
-        stopka_faktury = stopka_faktury_input if stopka_faktury_input else None
+            # Faktura
+            click.echo("\nDANE FAKTURY:")
+            numer = click.prompt("Numer faktury")
+            data_wyst = click.prompt(
+                "Data wystawienia (RRRR-MM-DD)", type=click.DateTime(["%Y-%m-%d"])
+            )
+            miejsce = click.prompt("Miejsce wystawienia")
+            data_sprz = click.prompt(
+                "Data sprzedaży (RRRR-MM-DD)", type=click.DateTime(["%Y-%m-%d"])
+            )
 
-        # Stwórz model
-        faktura_ksef = FakturaKSeF(
-            sprzedawca=Podmiot(
-                nip=sprzedawca_nip,
-                nazwa=sprzedawca_nazwa,
-                adres=Adres(
-                    adres_l1=sprzedawca_adres_l1,
-                    adres_l2=sprzedawca_adres_l2 if sprzedawca_adres_l2 else None,
+            # Pozycje
+            pozycje: list[PozycjaFaktury] = []
+            click.echo("\nPOZYCJE FAKTURY:")
+            while True:
+                nr_poz = len(pozycje) + 1
+                click.echo(f"\nPozycja #{nr_poz}:")
+                nazwa = click.prompt("Nazwa")
+                jm = click.prompt("Jednostka miary", default="szt")
+                ilosc = click.prompt("Ilość", type=float)
+                cena = click.prompt("Cena netto", type=float)
+                stawka = click.prompt("Stawka VAT (%)", type=int, default="23")
+
+                wartosc_netto = round(ilosc * cena, 2)
+
+                pozycje.append(
+                    PozycjaFaktury(
+                        nr=nr_poz,
+                        nazwa=nazwa,
+                        jm=jm,
+                        ilosc=ilosc,
+                        cena_netto=cena,
+                        wartosc_netto=wartosc_netto,
+                        stawka_vat=stawka,
+                    )
+                )
+
+                if not click.confirm("Dodać kolejną pozycję?", default=False):
+                    break
+
+            # Stopka faktury (opcjonalna)
+            stopka_faktury_input = click.prompt(
+                "\nStopka faktury (opcjonalnie, naciśnij Enter aby pominąć)",
+                default="",
+                show_default=False,
+            )
+            stopka_faktury = stopka_faktury_input if stopka_faktury_input else None
+
+            # Stwórz model
+            faktura_ksef = FakturaKSeF(
+                sprzedawca=Podmiot(
+                    nip=sprzedawca_nip,
+                    nazwa=sprzedawca_nazwa,
+                    adres=Adres(
+                        adres_l1=sprzedawca_adres_l1,
+                        adres_l2=sprzedawca_adres_l2 if sprzedawca_adres_l2 else None,
+                    ),
                 ),
-            ),
-            nabywca=Podmiot(
-                nip=nabywca_nip, nazwa=nabywca_nazwa, adres=Adres(adres_l1=nabywca_adres_l1)
-            ),
-            faktura=Faktura(
-                numer=numer,
-                data_wystawienia=data_wyst.date(),
-                miejsce_wystawienia=miejsce,
-                data_sprzedazy=data_sprz.date(),
-                pozycje=pozycje,
-                stopka_faktury=stopka_faktury,
-            ),
-        )
+                nabywca=Podmiot(
+                    nip=nabywca_nip,
+                    nazwa=nabywca_nazwa,
+                    adres=Adres(adres_l1=nabywca_adres_l1),
+                ),
+                faktura=Faktura(
+                    numer=numer,
+                    data_wystawienia=data_wyst.date(),
+                    miejsce_wystawienia=miejsce,
+                    data_sprzedazy=data_sprz.date(),
+                    pozycje=pozycje,
+                    stopka_faktury=stopka_faktury,
+                ),
+            )
 
         # Generuj XML
         generator = KSeFGenerator()
         xml = generator.generuj(faktura_ksef)
 
         # Zapisz
+        numer = faktura_ksef.faktura.numer
         output_file = click.prompt("\nNazwa pliku wyjściowego", default=f"faktura_{numer}.xml")
+
+        # Create directory if it doesn't exist
+        import os
+        output_dir = os.path.dirname(output_file)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(xml)
 
         click.echo(f"\n✓ Faktura wygenerowana: {output_file}")
+
+        # Offer visualization
+        if click.confirm("\nCzy chcesz wygenerować wizualizację PDF?", default=True):
+            pdf_file = click.prompt(
+                "Nazwa pliku PDF", default=output_file.replace(".xml", ".pdf")
+            )
+            try:
+                from .pdf_generator import KSeFPDFGenerator
+
+                pdf_gen = KSeFPDFGenerator()
+                pdf_gen.generuj_z_pliku(output_file, pdf_file)
+                click.echo(f"✓ Wizualizacja PDF: {pdf_file}")
+            except Exception as e:
+                click.echo(f"⚠ Nie udało się wygenerować PDF: {e}", err=True)
 
     except ValidationError as e:
         click.echo("\n✗ Błąd walidacji danych faktury:", err=True)
