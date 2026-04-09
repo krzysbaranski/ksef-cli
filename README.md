@@ -1,7 +1,8 @@
 # KSeF CLI - Generator Faktur
 
+[![PyPI version](https://badge.fury.io/py/ksef-cli.svg)](https://badge.fury.io/py/ksef-cli)
 [![CI/CD Pipeline](https://github.com/krzysbaranski/ksef-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/krzysbaranski/ksef-cli/actions/workflows/ci.yml)
-[![Python Version](https://img.shields.io/badge/python-3.14-blue)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/downloads/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -9,9 +10,18 @@ Aplikacja CLI do generacji i zarządzania fakturami w formacie KSeF (Krajowy Sys
 
 ## Instalacja
 
+### Z PyPI (rekomendowane)
+
 ```bash
-pip install -r requirements.txt
-pip install -e .
+pip install ksef-cli
+```
+
+### Instalacja dla deweloperów
+
+```bash
+git clone https://github.com/krzysbaranski/ksef-cli.git
+cd ksef-cli
+poetry install
 ```
 
 ## Spis komend
@@ -290,57 +300,41 @@ Zobacz `examples/example_invoice.json` dla pełnego przykładu.
 
 ## Rozwój
 
-### Instalacja dla deweloperów
-
-```bash
-# Sklonuj repozytorium
-git clone https://github.com/krzysbaranski/ksef-cli.git
-cd ksef-cli
-
-# Stwórz wirtualne środowisko
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Zainstaluj zależności deweloperskie
-pip install -r requirements-dev.txt
-pip install -e .
-```
-
 ### Uruchamianie testów
 
 ```bash
 # Uruchom wszystkie testy
-pytest
+poetry run pytest
 
 # Uruchom testy z pokryciem kodu
-pytest --cov=ksef_cli --cov-report=term-missing
+poetry run pytest --cov=ksef_cli --cov-report=term-missing
 
 # Uruchom konkretny test
-pytest tests/test_models.py
+poetry run pytest tests/test_ksef_api.py -v
 ```
 
 ### Sprawdzanie jakości kodu
 
 ```bash
 # Formatowanie kodu
-black ksef_cli/ tests/
+poetry run black ksef_cli/ tests/
 
 # Sortowanie importów
-isort ksef_cli/ tests/
+poetry run isort ksef_cli/ tests/
 
 # Linting
-flake8 ksef_cli/ tests/
+poetry run flake8 ksef_cli/ tests/
 
 # Type checking
-mypy ksef_cli/ --ignore-missing-imports
+poetry run mypy ksef_cli/
 
 # Security scanning
-bandit -r ksef_cli/
+poetry run bandit -r ksef_cli/
 ```
 
 ### Standardy kodu
 
-- **Python**: 3.14+
+- **Python**: 3.13+
 - **Formatowanie**: Black (line length: 100)
 - **Linting**: Flake8
 - **Type hints**: Wymagane dla wszystkich funkcji publicznych
@@ -355,13 +349,17 @@ Zapraszamy do współtworzenia projektu! Zobacz [CONTRIBUTING.md](CONTRIBUTING.m
 
 MIT License - zobacz plik LICENSE dla szczegółów.
 
-## CI/CD
+## CI/CD i Publikacja
 
 Projekt używa GitHub Actions do automatycznego:
-- Testowania na Python 3.14
+- Testowania na Python 3.13+
 - Sprawdzania jakości kodu (Black, Flake8, isort, mypy)
 - Skanowania bezpieczeństwa (Bandit, Safety)
 - Weryfikacji pokrycia kodu (minimum 80%)
+- Publikacji do TestPyPI (każde push na main)
+- Publikacji do PyPI (przy tworzeniu release'u)
+
+Pakiet jest dostępny na [PyPI](https://pypi.org/project/ksef-cli/).
 
 Status pipeline'u można sprawdzić w zakładce [Actions](https://github.com/krzysbaranski/ksef-cli/actions).
 ```
