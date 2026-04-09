@@ -91,7 +91,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ksef-cli"
-version = "1.0.0"
+version = "1.0.0rc2"
 description = "CLI tool for generating KSeF (Polish National e-Invoice System) invoices"
 readme = "README.md"
 requires-python = ">=3.13,<4"
