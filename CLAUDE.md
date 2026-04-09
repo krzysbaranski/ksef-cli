@@ -16,7 +16,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |---------|---------|
 | `list-invoices` | Query invoices from KSeF API with filters |
 | `get-invoice` | Download specific invoice XML by KSeF number |
-| `generate` | Generate invoice XML from JSON data file |
 | `interactive` | Generate invoice interactively (prompt-based) |
 | `validate` | Validate invoice XML format |
 | `visualize` | Convert invoice XML to PDF |
@@ -193,19 +192,6 @@ For testing:
 - Fixtures contain sample challenge and auth responses
 
 ## Practical Workflows
-
-### Generate, Validate, and Visualize Invoice
-
-```bash
-# 1. Generate XML from JSON
-poetry run ksef-cli generate -i invoice_data.json -o faktura.xml
-
-# 2. Validate format
-poetry run ksef-cli validate -f faktura.xml
-
-# 3. Create PDF for printing/sending
-poetry run ksef-cli visualize -i faktura.xml -o faktura.pdf
-```
 
 ### Download Invoice from KSeF
 

@@ -1,14 +1,16 @@
 """Tests for interactive template functionality."""
 
-import pytest
 from datetime import date
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 from click.testing import CliRunner
+
 from ksef_cli.interactive_template import InteractiveTemplate
 from ksef_cli.models import (
     Adres,
-    FakturaKSeF,
     Faktura,
+    FakturaKSeF,
     Podmiot,
     PozycjaFaktury,
 )
