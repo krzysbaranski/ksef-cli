@@ -10,7 +10,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Package manager**: Poetry
 - **Key dependencies**: Click (CLI), Pydantic (validation), cryptography (RSA-OAEP), lxml (XML), ReportLab (PDF)
 
-## Common Commands
+## Available Commands
+
+| Command | Purpose |
+|---------|---------|
+| `list-invoices` | Query invoices from KSeF API with filters |
+| `get-invoice` | Download specific invoice XML by KSeF number |
+| `generate` | Generate invoice XML from JSON data file |
+| `interactive` | Generate invoice interactively (prompt-based) |
+| `validate` | Validate invoice XML format |
+| `visualize` | Convert invoice XML to PDF |
+
+## Common Development Commands
 
 ```bash
 # Install dependencies and package in development mode
@@ -43,6 +54,7 @@ poetry run bandit -r ksef_cli/
 # Run the CLI locally
 poetry run ksef-cli --help
 poetry run ksef-cli list-invoices --help
+poetry run ksef-cli get-invoice --help
 ```
 
 ## Architecture
@@ -92,28 +104,51 @@ Optional filters (all configurable via CLI):
 - `invoiceTypes`: List of invoice types (e.g., ["Vat"])
 - `hasAttachment`: Boolean
 
+### Get Single Invoice
+
+**GET /v2/invoices/ksef/{ksefNumber}** — Retrieve specific invoice by KSeF number (XML)
+
+- Path parameter: `ksefNumber` (35-36 characters)
+- Returns: Full invoice XML document (application/xml content-type)
+- Response header: `x-ms-meta-hash` contains SHA-256 hash of invoice (Base64)
+- Error codes:
+  - 21164: Invoice not found
+  - 21165: Invoice processed but not yet available
+  - 21405: Input validation error
+
 **Rate limit**: 20 requests per hour per token
 
 ### Code Structure
 
 **ksef_cli/ksef_api.py** — KSeF API client
-- `KSeFClient` class: Main client with authentication and invoice listing
+- `KSeFClient` class: Main client with authentication and invoice operations
 - `_request()`: Low-level HTTP request handler (uses urllib)
 - `_get_public_key()`: Fetches and caches RSA public key
 - `_encrypt_token()`: RSA-OAEP encryption with MGF1-SHA256
 - `authenticate()`: Full 6-step auth flow
 - `_wait_for_auth_completion()`: Polling with exponential backoff
 - `list_invoices()`: Query invoices with configurable filters
+- `get_invoice()`: Retrieve specific invoice by KSeF number
 
 **ksef_cli/cli.py** — Click CLI commands
-- `list-invoices`: Main command for querying invoices
-  - Options: NIP, token, date range, subject type, invoicing mode, form type, amount filters, currency, invoice type, attachment filter
-  - Supports JSON output to file or stdout
+- `list-invoices`: Query invoices with filters
+  - Required: `-n/--nip`, `-t/--token`, `--date-from`, `--date-to`
+  - Optional filters: `--subject-type` (default "Subject1"), `--date-type` (default "PermanentStorage"), `--invoicing-mode`, `--form-type`, `--amount-type`, `--amount-from`, `--amount-to`, `--currency` (multiple), `--invoice-type` (multiple), `--has-attachment`
+  - Pagination: `--page-offset` (default 0), `--page-size` (default 100)
+  - Debug: `--debug` flag prints HTTP method, URL, request body, and response JSON to stderr
+  - Environment: `--test` flag uses test API (https://api-test.ksef.mf.gov.pl)
+  - Output: `-o/--output` for file output, stdout default (JSON format)
+- `get-invoice`: Retrieve specific invoice by KSeF number
+  - Required: `-n/--nip`, `-t/--token`, `-k/--ksef-number`
+  - Environment: `--test` flag uses test API
+  - Debug: `--debug` flag enables debug output to stderr
+  - Output: `-o/--output` for file output, stdout default (JSON format)
 
-**tests/test_ksef_api.py** — Unit tests (28 tests)
-- Tests for `_request()`, authentication flow, invoice listing
+**tests/test_ksef_api.py** — Unit tests (36 tests)
+- Tests for `_request()`, authentication flow, invoice listing, invoice retrieval
 - Uses mocking for HTTP requests and certificate handling
 - Fixtures for challenge, auth, and redeem responses
+- Test classes: TestKSeFClientInit, TestKSeFClientRequest, TestKSeFClientAuthenticate, TestKSeFClientListInvoices, TestKSeFClientGetInvoice, TestListInvoicesCLI, TestGetInvoiceCLI
 
 ## Key Technical Notes
 
@@ -136,10 +171,15 @@ Optional filters (all configurable via CLI):
 - Look for certificate with `"KsefTokenEncryption"` in `usage` array
 - Certificate is Base64-encoded DER (not PEM) — decode with `base64.b64decode()` then use `load_der_x509_certificate()`
 
+### Debug Mode
+- CLI flag `--debug` enables debug output to stderr
+- Prints HTTP method, full URL, request body (if any), extra headers, and JSON response
+- Useful for troubleshooting API issues and verifying correct request format
+
 ### Testing
 - Tests mock `_encrypt_token()` since real DER certificates can't be easily generated in fixtures
 - Tests use `patch.object(client, "_request")` to mock API responses
-- All 28 tests must pass before pushing changes
+- All 36 tests must pass before pushing changes
 
 ## Environment Setup
 
@@ -151,6 +191,66 @@ For development with real KSeF API:
 For testing:
 - No real credentials needed; all HTTP calls are mocked
 - Fixtures contain sample challenge and auth responses
+
+## Practical Workflows
+
+### Generate, Validate, and Visualize Invoice
+
+```bash
+# 1. Generate XML from JSON
+poetry run ksef-cli generate -i invoice_data.json -o faktura.xml
+
+# 2. Validate format
+poetry run ksef-cli validate -f faktura.xml
+
+# 3. Create PDF for printing/sending
+poetry run ksef-cli visualize -i faktura.xml -o faktura.pdf
+```
+
+### Download Invoice from KSeF
+
+```bash
+# 1. List invoices from last month
+poetry run ksef-cli list-invoices -n 1234567890 -t $TOKEN \
+  --date-from "2026-03-01T00:00:00.000Z" \
+  --date-to "2026-03-31T23:59:59.999Z" \
+  --output faktury_marzec.json
+
+# 2. Take ksefReferenceNumber from JSON, download XML
+poetry run ksef-cli get-invoice -n 1234567890 -t $TOKEN \
+  -k "123-456-789-10-2026-0000001" \
+  -o pobrana_faktura.xml
+
+# 3. Visualize downloaded invoice
+poetry run ksef-cli visualize -i pobrana_faktura.xml -o pobrana_faktura.pdf
+```
+
+### Filter and Download Specific Invoices
+
+```bash
+# High-value VAT invoices only
+poetry run ksef-cli list-invoices -n 1234567890 -t $TOKEN \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z" \
+  --subject-type Subject1 \
+  --invoice-type Vat \
+  --amount-type Brutto \
+  --amount-from 1000 \
+  --output high_value_invoices.json
+```
+
+### Debug Authentication and API Issues
+
+```bash
+# Enable debug output to stderr (logging to 2> redirects to file)
+poetry run ksef-cli list-invoices -n 1234567890 -t $TOKEN \
+  --date-from "2026-01-01T00:00:00.000Z" \
+  --date-to "2026-12-31T23:59:59.999Z" \
+  --debug 2> debug.log
+
+# Check what's happening at the HTTP level
+cat debug.log
+```
 
 ## Style and Standards
 

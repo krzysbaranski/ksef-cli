@@ -37,19 +37,21 @@ class KSeFClient:
     Supports KSeF token authentication with RSA-OAEP encryption.
     """
 
-    def __init__(self, nip: str, token: str, *, test: bool = False) -> None:
+    def __init__(self, nip: str, token: str, *, test: bool = False, debug: bool = False) -> None:
         """Initialise the client.
 
         Args:
             nip: Polish NIP number (10 digits) of the entity to authenticate as.
             token: Authorization token issued by the KSeF portal.
             test: When *True* the demo/test environment is used instead of production.
+            debug: When *True* print debug information (URLs, requests, responses).
         """
         self.nip = nip
         self.token = token
         self.base_url = KSEF_TEST_API_URL if test else KSEF_API_URL
         self.access_token: Optional[str] = None
         self._public_key: Optional[Any] = None
+        self.debug = debug
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -86,12 +88,86 @@ class KSeFClient:
         if extra_headers:
             headers.update(extra_headers)
 
+        if self.debug:
+            import sys
+
+            print(f"\n[DEBUG] {method} {url}", file=sys.stderr)
+            if body:
+                print(f"[DEBUG] Request body: {body.decode('utf-8')}", file=sys.stderr)
+            if extra_headers:
+                print(f"[DEBUG] Extra headers: {extra_headers}", file=sys.stderr)
+
         req = urllib.request.Request(url, data=body, headers=headers, method=method)
         try:
             with urllib.request.urlopen(req) as response:
-                return json.loads(response.read().decode("utf-8"))
+                response_data = json.loads(response.read().decode("utf-8"))
+                if self.debug:
+                    import sys
+
+                    print(
+                        f"[DEBUG] Response: {json.dumps(response_data, ensure_ascii=False)}",
+                        file=sys.stderr,
+                    )
+                return response_data
         except urllib.error.HTTPError as exc:
             error_body = exc.read().decode("utf-8")
+            if self.debug:
+                import sys
+
+                print(f"[DEBUG] HTTP {exc.code} response: {error_body}", file=sys.stderr)
+            raise KSeFAPIError(f"HTTP {exc.code} from {url}: {error_body}") from exc
+        except urllib.error.URLError as exc:
+            raise KSeFAPIError(f"Connection error: {exc.reason}") from exc
+
+    def _request_raw(
+        self,
+        method: str,
+        path: str,
+        extra_headers: Optional[Dict[str, str]] = None,
+    ) -> str:
+        """Execute an HTTP request and return raw response (for XML content).
+
+        Args:
+            method: HTTP method (``GET``, ``POST`` …).
+            path: API path, starting with ``/``.
+            extra_headers: Additional HTTP headers to send.
+
+        Returns:
+            Raw response body as string.
+
+        Raises:
+            KSeFAPIError: On any HTTP error or unexpected response.
+        """
+        url = f"{self.base_url}{path}"
+
+        headers: Dict[str, str] = {
+            "Accept": "application/xml",
+        }
+        if extra_headers:
+            headers.update(extra_headers)
+
+        if self.debug:
+            import sys
+
+            print(f"\n[DEBUG] {method} {url}", file=sys.stderr)
+            if extra_headers:
+                print(f"[DEBUG] Extra headers: {extra_headers}", file=sys.stderr)
+
+        req = urllib.request.Request(url, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req) as response:
+                response_body = response.read().decode("utf-8")
+                if self.debug:
+                    import sys
+
+                    print(f"[DEBUG] Response: {response_body[:500]}...", file=sys.stderr)
+                return response_body
+        except urllib.error.HTTPError as exc:
+            error_body = exc.read().decode("utf-8")
+            if self.debug:
+                import sys
+
+                print(f"[DEBUG] HTTP {exc.code} response: {error_body}", file=sys.stderr)
             raise KSeFAPIError(f"HTTP {exc.code} from {url}: {error_body}") from exc
         except urllib.error.URLError as exc:
             raise KSeFAPIError(f"Connection error: {exc.reason}") from exc
@@ -290,6 +366,7 @@ class KSeFClient:
         date_to: str,
         *,
         subject_type: str = "Subject1",
+        date_type: str = "PermanentStorage",
         invoicing_mode: Optional[str] = None,
         form_type: Optional[str] = None,
         amount_type: Optional[str] = None,
@@ -311,6 +388,9 @@ class KSeFClient:
             date_to: End of the date range in ISO-8601 format
                 (e.g. ``"2023-12-31T23:59:59.999Z"``).
             subject_type: Entity type for filtering (default ``"Subject1"`` = seller).
+            date_type: Date type for filtering (default ``"PermanentStorage"``).
+                Options: ``"Issue"`` (invoice issue date), ``"Invoicing"`` (receipt date in KSeF),
+                ``"PermanentStorage"`` (permanent storage date).
             invoicing_mode: Invoicing mode (e.g., ``"Online"``, ``"Offline"``).
             form_type: Invoice form type (e.g., ``"FA"``, ``"FVAt"``).
             amount_type: Amount type for filtering (``"Netto"`` or ``"Brutto"``).
@@ -338,7 +418,7 @@ class KSeFClient:
             "pageOffset": page_offset,
             "pageSize": page_size,
             "dateRange": {
-                "dateType": "PermanentStorage",
+                "dateType": date_type,
                 "from": date_from,
                 "to": date_to,
             },
@@ -370,4 +450,30 @@ class KSeFClient:
             extra_headers={"Authorization": f"Bearer {self.access_token}"},
         )
 
-        return response.get("invoiceMetadata", [])
+        return response.get("invoices", [])
+
+    def get_invoice(self, ksef_number: str) -> str:
+        """Retrieve a specific invoice by KSeF number as XML.
+
+        Authenticates automatically if no access token is present.
+
+        Args:
+            ksef_number: KSeF invoice number (35-36 characters).
+
+        Returns:
+            Invoice XML document as string.
+
+        Raises:
+            KSeFAuthError: If authentication fails.
+            KSeFAPIError: On any HTTP/network error.
+        """
+        if not self.access_token:
+            self.authenticate()
+
+        response = self._request_raw(
+            "GET",
+            f"/v2/invoices/ksef/{ksef_number}",
+            extra_headers={"Authorization": f"Bearer {self.access_token}"},
+        )
+
+        return response

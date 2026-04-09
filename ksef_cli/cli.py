@@ -410,6 +410,13 @@ def html(xml_file, output_file, numer_ksef):
     help="Typ podmiotu (Subject1=sprzedawca, Subject2=nabywca, Subject3, SubjectAuthorized)",
 )
 @click.option(
+    "--date-type",
+    "date_type",
+    default="PermanentStorage",
+    type=click.Choice(["Issue", "Invoicing", "PermanentStorage"], case_sensitive=True),
+    help="Typ daty do filtrowania (Issue=wystawienia, Invoicing=przyjęcia, PermanentStorage=zapisu)",
+)
+@click.option(
     "--invoicing-mode",
     "invoicing_mode",
     default=None,
@@ -461,6 +468,26 @@ def html(xml_file, output_file, numer_ksef):
     default=False,
     help="Tylko faktury z załącznikami",
 )
+@click.option(
+    "--page-offset",
+    "page_offset",
+    default=0,
+    type=int,
+    help="Numer strony (offset) - domyślnie 0",
+)
+@click.option(
+    "--page-size",
+    "page_size",
+    default=100,
+    type=int,
+    help="Rozmiar strony (liczba wyników) - domyślnie 100",
+)
+@click.option(
+    "--debug",
+    is_flag=True,
+    default=False,
+    help="Włącz tryb debug (wyświetl URL, request i response)",
+)
 def list_invoices(
     nip,
     token,
@@ -469,6 +496,7 @@ def list_invoices(
     use_test_env,
     output_file,
     subject_type,
+    date_type,
     invoicing_mode,
     form_type,
     amount_type,
@@ -477,16 +505,20 @@ def list_invoices(
     currencies,
     invoice_types,
     has_attachment,
+    page_offset,
+    page_size,
+    debug,
 ):
     """Pobiera listę faktur z API KSeF (autoryzacja tokenem)"""
     from .ksef_api import KSeFAPIError, KSeFAuthError, KSeFClient
 
     try:
-        client = KSeFClient(nip=nip, token=token, test=use_test_env)
+        client = KSeFClient(nip=nip, token=token, test=use_test_env, debug=debug)
         invoices = client.list_invoices(
             date_from=date_from,
             date_to=date_to,
             subject_type=subject_type,
+            date_type=date_type,
             invoicing_mode=invoicing_mode,
             form_type=form_type,
             amount_type=amount_type,
@@ -495,6 +527,8 @@ def list_invoices(
             currencies=list(currencies) if currencies else None,
             invoice_types=list(invoice_types) if invoice_types else None,
             has_attachment=has_attachment,
+            page_offset=page_offset,
+            page_size=page_size,
         )
 
         result = json.dumps(invoices, ensure_ascii=False, indent=2)
@@ -506,6 +540,79 @@ def list_invoices(
         else:
             click.echo(result)
             click.echo(f"\n✓ Pobrano {len(invoices)} faktur", err=True)
+
+    except KSeFAuthError as e:
+        click.echo(f"✗ Błąd autoryzacji KSeF: {e}", err=True)
+        raise click.Abort()
+    except KSeFAPIError as e:
+        click.echo(f"✗ Błąd API KSeF: {e}", err=True)
+        raise click.Abort()
+    except OSError as e:
+        click.echo(f"✗ Błąd zapisu pliku '{output_file}': {e.strerror}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"✗ Nieoczekiwany błąd: {type(e).__name__}: {e}", err=True)
+        raise click.Abort()
+
+
+@cli.command("get-invoice")
+@click.option(
+    "-n",
+    "--nip",
+    required=True,
+    type=str,
+    help="NIP podmiotu (10 cyfr)",
+)
+@click.option(
+    "-t",
+    "--token",
+    required=True,
+    type=str,
+    help="Token autoryzacyjny z portalu KSeF",
+)
+@click.option(
+    "-k",
+    "--ksef-number",
+    "ksef_number",
+    required=True,
+    type=str,
+    help="Numer KSeF faktury (35-36 znaków)",
+)
+@click.option(
+    "--test",
+    "use_test_env",
+    is_flag=True,
+    default=False,
+    help="Użyj testowego środowiska KSeF",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_file",
+    type=click.Path(),
+    default=None,
+    help="Zapisz wynik do pliku XML (domyślnie: stdout)",
+)
+@click.option(
+    "--debug",
+    is_flag=True,
+    default=False,
+    help="Włącz tryb debug (wyświetl URL, request i response)",
+)
+def get_invoice(nip, token, ksef_number, use_test_env, output_file, debug):
+    """Pobiera konkretną fakturę z API KSeF po numerze KSeF (XML)"""
+    from .ksef_api import KSeFAPIError, KSeFAuthError, KSeFClient
+
+    try:
+        client = KSeFClient(nip=nip, token=token, test=use_test_env, debug=debug)
+        invoice_xml = client.get_invoice(ksef_number=ksef_number)
+
+        if output_file:
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write(invoice_xml)
+            click.echo(f"✓ Faktura zapisana do: {output_file}")
+        else:
+            click.echo(invoice_xml)
 
     except KSeFAuthError as e:
         click.echo(f"✗ Błąd autoryzacji KSeF: {e}", err=True)
