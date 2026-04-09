@@ -429,7 +429,9 @@ class TestKSeFClientGetInvoice:
     def test_returns_invoice_xml(self, client):
         client.access_token = "TOKEN"
 
-        with patch("urllib.request.urlopen", return_value=_make_urlopen_mock_raw(GET_INVOICE_RESPONSE_XML)):
+        with patch(
+            "urllib.request.urlopen", return_value=_make_urlopen_mock_raw(GET_INVOICE_RESPONSE_XML)
+        ):
             invoice = client.get_invoice(ksef_number="123-456-789-10-2023-0000001")
 
         assert isinstance(invoice, str)
@@ -457,7 +459,9 @@ class TestKSeFClientGetInvoice:
     def test_skips_auth_when_access_token_set(self, client):
         client.access_token = "TOKEN"
 
-        with patch("urllib.request.urlopen", return_value=_make_urlopen_mock_raw(GET_INVOICE_RESPONSE_XML)):
+        with patch(
+            "urllib.request.urlopen", return_value=_make_urlopen_mock_raw(GET_INVOICE_RESPONSE_XML)
+        ):
             invoice = client.get_invoice(ksef_number="123-456-789-10-2023-0000001")
 
         assert isinstance(invoice, str)
