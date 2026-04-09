@@ -94,5 +94,3 @@ def faktura_ksef(sprzedawca, nabywca, faktura):
 def dodatkowy_opis():
     """Sample additional description"""
     return DodatkowyOpis(klucz="Uwagi", wartosc="Termin płatności: 14 dni")
-
-
