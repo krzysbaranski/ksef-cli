@@ -105,7 +105,7 @@ PUBLIC_KEY_RESPONSE = [
 ]
 
 INVOICE_LIST_RESPONSE = {
-    "invoiceMetadata": [
+    "invoices": [
         {
             "ksefReferenceNumber": "INV-001",
             "invoicingDate": "2023-06-01T00:00:00.000Z",
@@ -123,9 +123,8 @@ INVOICE_LIST_RESPONSE = {
             "currency": "PLN",
         },
     ],
-    "numberOfElements": 2,
-    "pageSize": 100,
-    "pageOffset": 0,
+    "hasMore": False,
+    "isTruncated": False,
 }
 
 
@@ -370,7 +369,7 @@ class TestKSeFClientListInvoices:
 
     def test_returns_empty_list_when_no_invoices(self, client):
         client.access_token = "TOKEN"
-        empty_response = {"invoiceMetadata": [], "numberOfElements": 0}
+        empty_response = {"invoices": [], "hasMore": False, "isTruncated": False}
 
         with patch("urllib.request.urlopen", return_value=_make_urlopen_mock(empty_response)):
             invoices = client.list_invoices(

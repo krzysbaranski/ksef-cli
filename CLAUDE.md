@@ -107,8 +107,12 @@ Optional filters (all configurable via CLI):
 
 **ksef_cli/cli.py** — Click CLI commands
 - `list-invoices`: Main command for querying invoices
-  - Options: NIP, token, date range, subject type, invoicing mode, form type, amount filters, currency, invoice type, attachment filter
-  - Supports JSON output to file or stdout
+  - Required: `-n/--nip`, `-t/--token`, `--date-from`, `--date-to`
+  - Optional filters: `--subject-type` (default "Subject1"), `--date-type` (default "PermanentStorage"), `--invoicing-mode`, `--form-type`, `--amount-type`, `--amount-from`, `--amount-to`, `--currency` (multiple), `--invoice-type` (multiple), `--has-attachment`
+  - Pagination: `--page-offset` (default 0), `--page-size` (default 100)
+  - Debug: `--debug` flag prints HTTP method, URL, request body, and response JSON to stderr
+  - Environment: `--test` flag uses test API (https://api-test.ksef.mf.gov.pl)
+  - Output: `-o/--output` for file output, stdout default (JSON format)
 
 **tests/test_ksef_api.py** — Unit tests (28 tests)
 - Tests for `_request()`, authentication flow, invoice listing
@@ -135,6 +139,11 @@ Optional filters (all configurable via CLI):
 - API returns array of certificate objects directly (not wrapped in `{"certificates": []}`)
 - Look for certificate with `"KsefTokenEncryption"` in `usage` array
 - Certificate is Base64-encoded DER (not PEM) — decode with `base64.b64decode()` then use `load_der_x509_certificate()`
+
+### Debug Mode
+- CLI flag `--debug` enables debug output to stderr
+- Prints HTTP method, full URL, request body (if any), extra headers, and JSON response
+- Useful for troubleshooting API issues and verifying correct request format
 
 ### Testing
 - Tests mock `_encrypt_token()` since real DER certificates can't be easily generated in fixtures
