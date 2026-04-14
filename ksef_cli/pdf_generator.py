@@ -11,7 +11,47 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    HRFlowable,
+    Image,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
+
+# ── Colours ──────────────────────────────────────────────────────────────────
+NAVY = colors.HexColor("#1a3557")
+STEEL = colors.HexColor("#e8eef5")
+LIGHT_GREY = colors.HexColor("#f5f5f5")
+MID_GREY = colors.HexColor("#cccccc")
+WHITE = colors.white
+
+# ── VAT rate buckets defined by FA(3) schema ──────────────────────────────────
+VAT_RATE_LABELS = {
+    "1": "23%",
+    "2": "8%",
+    "3": "5%",
+    "4": "0%",
+    "5": "ZW",
+    "6": "OO",
+    "7": "Marża",
+    "8": "NP",
+    "9": "Inne",
+    "10": "np.",
+    "11": "nie podlega",
+}
+
+FORMY_PLATNOSCI = {
+    "1": "Gotówka",
+    "2": "Karta płatnicza",
+    "3": "Bon",
+    "4": "Czek",
+    "5": "Kredyt",
+    "6": "Przelew",
+    "7": "Płatność mobilna",
+}
 
 
 class KSeFPDFGenerator:
@@ -24,139 +64,164 @@ class KSeFPDFGenerator:
         self.styles = getSampleStyleSheet()
         self._setup_styles()
 
+    # ── Font registration ─────────────────────────────────────────────────────
+
     def _register_fonts(self):
-        """Rejestruje czcionki obsługujące polskie znaki"""
-        # DejaVu Sans fonts support Polish characters (ą, ę, ó, ł, ś, ć, ń, ź, ż)
-        # Cross-platform font paths
-        import sys
-
-        if sys.platform == "win32":
-            font_dirs = [
-                "C:\\Windows\\Fonts",
-                os.path.expandvars("%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts"),
-            ]
-        elif sys.platform == "darwin":
-            font_dirs = [
-                "/Library/Fonts",
-                os.path.expanduser("~/Library/Fonts"),
-                "/System/Library/Fonts",
-            ]
-        else:  # Linux and other Unix-like systems
-            font_dirs = [
-                "/usr/share/fonts/truetype/dejavu",
-                "/usr/share/fonts/TTF",
-                os.path.expanduser("~/.fonts"),
-            ]
-
-        font_files = [
-            ("DejaVuSans.ttf", "DejaVuSans"),
-            ("DejaVuSans-Bold.ttf", "DejaVuSans-Bold"),
+        """Register fonts with Polish character support."""
+        # Priority search: bundled package fonts → system DejaVu → Arial (macOS)
+        candidates = [
+            # Bundled with this package
+            (
+                os.path.join(os.path.dirname(__file__), "fonts", "DejaVuSans.ttf"),
+                "DejaVuSans",
+            ),
+            (
+                os.path.join(os.path.dirname(__file__), "fonts", "DejaVuSans-Bold.ttf"),
+                "DejaVuSans-Bold",
+            ),
         ]
 
-        for font_file, font_name in font_files:
-            for font_dir in font_dirs:
-                font_path = os.path.join(font_dir, font_file)
-                if os.path.exists(font_path):
-                    try:
-                        pdfmetrics.registerFont(TTFont(font_name, font_path))
-                        break  # Font registered, move to next font
-                    except pdfmetrics.PdfFontEmbedError:
-                        pass  # Font already registered, try next
-                    except OSError:
-                        continue  # File access issue, try next path
+        # System DejaVu paths (Linux, some macOS via Homebrew)
+        for search_dir in [
+            "/usr/share/fonts/truetype/dejavu",
+            "/usr/share/fonts/TTF",
+            "/opt/homebrew/share/fonts",
+            "/usr/local/share/fonts",
+            os.path.expanduser("~/.fonts"),
+        ]:
+            candidates += [
+                (os.path.join(search_dir, "DejaVuSans.ttf"), "DejaVuSans"),
+                (os.path.join(search_dir, "DejaVuSans-Bold.ttf"), "DejaVuSans-Bold"),
+            ]
+
+        # macOS Arial (always present, full Unicode support)
+        for search_dir in [
+            "/System/Library/Fonts/Supplemental",
+            "/Library/Fonts",
+            os.path.expanduser("~/Library/Fonts"),
+        ]:
+            candidates += [
+                (os.path.join(search_dir, "Arial.ttf"), "DejaVuSans"),
+                (os.path.join(search_dir, "Arial Bold.ttf"), "DejaVuSans-Bold"),
+                (os.path.join(search_dir, "Arial.ttf"), "DejaVuSans"),
+            ]
+
+        # Windows Arial
+        candidates += [
+            (r"C:\Windows\Fonts\arial.ttf", "DejaVuSans"),
+            (r"C:\Windows\Fonts\arialbd.ttf", "DejaVuSans-Bold"),
+        ]
+
+        registered: set[str] = set()
+        for font_path, font_name in candidates:
+            if font_name in registered:
+                continue
+            if not os.path.exists(font_path):
+                continue
+            try:
+                pdfmetrics.registerFont(TTFont(font_name, font_path))
+                registered.add(font_name)
+            except Exception:
+                continue
+
+    def _font_available(self, font_name: str) -> bool:
+        return font_name in pdfmetrics.getRegisteredFontNames()
+
+    # ── Styles ────────────────────────────────────────────────────────────────
 
     def _setup_styles(self):
-        """Konfiguracja stylów dokumentu"""
-        # Use DejaVu Sans font for Polish character support, fallback to Helvetica
         font_regular = "DejaVuSans" if self._font_available("DejaVuSans") else "Helvetica"
-        font_bold = (
-            "DejaVuSans-Bold" if self._font_available("DejaVuSans-Bold") else "Helvetica-Bold"
-        )
-
-        self.styles.add(
-            ParagraphStyle(
-                name="InvoiceTitle",
-                fontSize=16,
-                leading=20,
-                alignment=1,  # Center
-                spaceAfter=12,
-                fontName=font_bold,
-            )
-        )
-        self.styles.add(
-            ParagraphStyle(
-                name="SectionHeader",
-                fontSize=12,
-                leading=14,
-                fontName=font_bold,
-                spaceBefore=12,
-                spaceAfter=6,
-            )
-        )
-        self.styles.add(
-            ParagraphStyle(
-                name="FieldLabel",
-                fontSize=9,
-                leading=11,
-                fontName=font_bold,
-            )
-        )
-        self.styles.add(
-            ParagraphStyle(
-                name="FieldValue",
-                fontSize=10,
-                leading=12,
-                fontName=font_regular,
-            )
-        )
-
-        # Store font names for use in table styles
+        font_bold = "DejaVuSans-Bold" if self._font_available("DejaVuSans-Bold") else "Helvetica-Bold"
         self._font_regular = font_regular
         self._font_bold = font_bold
 
-    def _font_available(self, font_name: str) -> bool:
-        """Check if font is registered"""
-        return font_name in pdfmetrics.getRegisteredFontNames()
+        self.styles.add(
+            ParagraphStyle(
+                "InvoiceTitle",
+                fontSize=20,
+                leading=24,
+                alignment=1,
+                fontName=font_bold,
+                textColor=WHITE,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                "SectionHeader",
+                fontSize=9,
+                leading=11,
+                fontName=font_bold,
+                textColor=NAVY,
+                spaceBefore=0,
+                spaceAfter=3,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                "FieldLabel",
+                fontSize=8,
+                leading=10,
+                fontName=font_bold,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                "FieldValue",
+                fontSize=8,
+                leading=10,
+                fontName=font_regular,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                "FooterNote",
+                fontSize=8,
+                leading=10,
+                fontName=font_regular,
+                textColor=colors.HexColor("#555555"),
+                alignment=1,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                "TotalRowLabel",
+                fontSize=11,
+                leading=14,
+                fontName=font_bold,
+                textColor=WHITE,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                "TotalRowValue",
+                fontSize=11,
+                leading=14,
+                fontName=font_bold,
+                textColor=WHITE,
+                alignment=2,  # right
+            )
+        )
+
+    # ── Public API ────────────────────────────────────────────────────────────
 
     def generuj_z_xml(
         self, xml_content: str, output_path: str, numer_ksef: Optional[str] = None
     ) -> str:
-        """
-        Generuje PDF z zawartości XML faktury KSeF.
-
-        Args:
-            xml_content: Zawartość XML faktury
-            output_path: Ścieżka do pliku wyjściowego PDF
-            numer_ksef: Opcjonalny numer KSeF do wygenerowania kodu QR weryfikacji
-
-        Returns:
-            Ścieżka do wygenerowanego pliku PDF
-        """
         root = etree.fromstring(xml_content.encode("utf-8"))
         return self._generuj_pdf(root, output_path, numer_ksef)
 
     def generuj_z_pliku(
         self, xml_path: str, output_path: str, numer_ksef: Optional[str] = None
     ) -> str:
-        """
-        Generuje PDF z pliku XML faktury KSeF.
-
-        Args:
-            xml_path: Ścieżka do pliku XML
-            output_path: Ścieżka do pliku wyjściowego PDF
-            numer_ksef: Opcjonalny numer KSeF do wygenerowania kodu QR weryfikacji
-
-        Returns:
-            Ścieżka do wygenerowanego pliku PDF
-        """
         with open(xml_path, "rb") as f:
             tree = etree.parse(f)
         return self._generuj_pdf(tree.getroot(), output_path, numer_ksef)
 
+    # ── Main builder ──────────────────────────────────────────────────────────
+
     def _generuj_pdf(
         self, root: etree._Element, output_path: str, numer_ksef: Optional[str] = None
     ) -> str:
-        """Generuje PDF z elementu XML"""
         ns = {"ns": self.NAMESPACE}
 
         doc = SimpleDocTemplate(
@@ -164,43 +229,48 @@ class KSeFPDFGenerator:
             pagesize=A4,
             leftMargin=15 * mm,
             rightMargin=15 * mm,
-            topMargin=15 * mm,
+            topMargin=10 * mm,
             bottomMargin=15 * mm,
         )
 
-        elements = []
+        elements: list = []
 
-        # Tytuł faktury
-        numer_faktury = self._get_text(root, ".//ns:Fa/ns:P_2", ns) or "Faktura"
-        elements.append(Paragraph(f"FAKTURA VAT {numer_faktury}", self.styles["InvoiceTitle"]))
-        elements.append(Spacer(1, 6 * mm))
+        # ── Title bar ────────────────────────────────────────────────────────
+        elements.extend(self._generuj_tytul(root, ns))
+        elements.append(Spacer(1, 5 * mm))
 
-        # Dane nagłówka
+        # ── Header dates ─────────────────────────────────────────────────────
         elements.extend(self._generuj_naglowek(root, ns))
-        elements.append(Spacer(1, 4 * mm))
+        elements.append(Spacer(1, 5 * mm))
 
-        # Dane stron
+        # ── Parties ──────────────────────────────────────────────────────────
         elements.extend(self._generuj_dane_stron(root, ns))
-        elements.append(Spacer(1, 4 * mm))
+        elements.append(Spacer(1, 5 * mm))
 
-        # Pozycje faktury
+        # ── Line items ────────────────────────────────────────────────────────
         elements.extend(self._generuj_pozycje(root, ns))
-        elements.append(Spacer(1, 4 * mm))
+        elements.append(Spacer(1, 5 * mm))
 
-        # Podsumowanie
+        # ── Summary ──────────────────────────────────────────────────────────
         elements.extend(self._generuj_podsumowanie(root, ns))
-        elements.append(Spacer(1, 4 * mm))
+        elements.append(Spacer(1, 5 * mm))
 
-        # Płatność
+        # ── Payment ──────────────────────────────────────────────────────────
         elements.extend(self._generuj_platnosc(root, ns))
 
-        # Dodatkowe opisy (DodatkowyOpis)
-        dodatkowe_opisy = self._generuj_dodatkowe_opisy(root, ns)
-        if dodatkowe_opisy:
+        # ── Additional descriptions ───────────────────────────────────────────
+        dodatkowe = self._generuj_dodatkowe_opisy(root, ns)
+        if dodatkowe:
             elements.append(Spacer(1, 4 * mm))
-            elements.extend(dodatkowe_opisy)
+            elements.extend(dodatkowe)
 
-        # Sekcja weryfikacji KSeF (gdy podano numer KSeF)
+        # ── Footer (Stopka) ───────────────────────────────────────────────────
+        stopka = self._generuj_stopka(root, ns)
+        if stopka:
+            elements.append(Spacer(1, 5 * mm))
+            elements.extend(stopka)
+
+        # ── KSeF QR verification ─────────────────────────────────────────────
         if numer_ksef:
             elements.append(Spacer(1, 4 * mm))
             elements.extend(self._generuj_weryfikacja_ksef(numer_ksef))
@@ -208,113 +278,149 @@ class KSeFPDFGenerator:
         doc.build(elements)
         return output_path
 
-    def _get_text(
-        self, root: etree._Element, xpath: str, ns: dict, default: Optional[str] = None
-    ) -> Optional[str]:
-        """Pobiera tekst z elementu XML"""
-        elem = root.find(xpath, ns)
-        return elem.text if elem is not None else default
+    # ── Section builders ─────────────────────────────────────────────────────
+
+    def _generuj_tytul(self, root: etree._Element, ns: dict) -> list:
+        """Dark navy title bar with invoice number and type."""
+        numer = self._get_text(root, ".//ns:Fa/ns:P_2", ns) or "Faktura"
+        rodzaj = self._get_text(root, ".//ns:Fa/ns:RodzajFaktury", ns) or "VAT"
+        label = f"FAKTURA {rodzaj} {numer}"
+
+        # Title rendered as a 1-cell table so we can set background colour
+        title_para = Paragraph(label, self.styles["InvoiceTitle"])
+        table = Table([[title_para]], colWidths=[180 * mm])
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), NAVY),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        return [table]
 
     def _generuj_naglowek(self, root: etree._Element, ns: dict) -> list:
-        """Generuje sekcję nagłówka"""
-        elements = []
-
+        """Issue date, issue place, sale date — compact 4-column row."""
         data_wystawienia = self._get_text(root, ".//ns:Fa/ns:P_1", ns) or "-"
         miejsce = self._get_text(root, ".//ns:Fa/ns:P_1M", ns) or "-"
         data_sprzedazy = self._get_text(root, ".//ns:Fa/ns:P_6", ns) or "-"
+        waluta = self._get_text(root, ".//ns:Fa/ns:KodWaluty", ns) or "PLN"
 
-        header_data = [
-            ["Data wystawienia:", data_wystawienia, "Miejsce wystawienia:", miejsce],
-            ["Data sprzedaży:", data_sprzedazy, "", ""],
+        def lbl(text):
+            return Paragraph(text, self.styles["FieldLabel"])
+
+        def val(text):
+            return Paragraph(text, self.styles["FieldValue"])
+
+        rows = [
+            [lbl("Data wystawienia:"), val(data_wystawienia), lbl("Miejsce wystawienia:"), val(miejsce)],
+            [lbl("Data sprzedaży:"), val(data_sprzedazy), lbl("Waluta:"), val(waluta)],
         ]
 
-        table = Table(header_data, colWidths=[45 * mm, 45 * mm, 45 * mm, 45 * mm])
+        table = Table(rows, colWidths=[40 * mm, 40 * mm, 50 * mm, 50 * mm])
         table.setStyle(
             TableStyle(
                 [
-                    ("FONTNAME", (0, 0), (0, -1), self._font_bold),
-                    ("FONTNAME", (2, 0), (2, -1), self._font_bold),
-                    ("FONTNAME", (1, 0), (1, -1), self._font_regular),
-                    ("FONTNAME", (3, 0), (3, -1), self._font_regular),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
                 ]
             )
         )
-        elements.append(table)
-
-        return elements
+        return [table]
 
     def _generuj_dane_stron(self, root: etree._Element, ns: dict) -> list:
-        """Generuje sekcję danych sprzedawcy i nabywcy"""
-        elements = []
+        """Two-box layout: seller left, buyer right."""
 
-        # Dane sprzedawcy
-        sprzedawca_nip = self._get_text(root, ".//ns:Podmiot1//ns:NIP", ns) or "-"
-        sprzedawca_nazwa = self._get_text(root, ".//ns:Podmiot1//ns:Nazwa", ns) or "-"
-        sprzedawca_adres_l1 = self._get_text(root, ".//ns:Podmiot1//ns:AdresL1", ns) or ""
-        sprzedawca_adres_l2 = self._get_text(root, ".//ns:Podmiot1//ns:AdresL2", ns) or ""
-        sprzedawca_adres = f"{sprzedawca_adres_l1}"
-        if sprzedawca_adres_l2:
-            sprzedawca_adres += f", {sprzedawca_adres_l2}"
+        def get_party(xpath_prefix: str) -> dict:
+            nip = self._get_text(root, f".//ns:{xpath_prefix}//ns:NIP", ns) or "-"
+            nazwa = self._get_text(root, f".//ns:{xpath_prefix}//ns:Nazwa", ns) or "-"
+            l1 = self._get_text(root, f".//ns:{xpath_prefix}//ns:AdresL1", ns) or ""
+            l2 = self._get_text(root, f".//ns:{xpath_prefix}//ns:AdresL2", ns) or ""
+            return {"nip": nip, "nazwa": nazwa, "adres": f"{l1}{', ' + l2 if l2 else ''}"}
 
-        # Dane nabywcy
-        nabywca_nip = self._get_text(root, ".//ns:Podmiot2//ns:NIP", ns) or "-"
-        nabywca_nazwa = self._get_text(root, ".//ns:Podmiot2//ns:Nazwa", ns) or "-"
-        nabywca_adres_l1 = self._get_text(root, ".//ns:Podmiot2//ns:AdresL1", ns) or ""
-        nabywca_adres_l2 = self._get_text(root, ".//ns:Podmiot2//ns:AdresL2", ns) or ""
-        nabywca_adres = f"{nabywca_adres_l1}"
-        if nabywca_adres_l2:
-            nabywca_adres += f", {nabywca_adres_l2}"
+        sprzedawca = get_party("Podmiot1")
+        nabywca = get_party("Podmiot2")
 
-        party_data = [
-            [
-                Paragraph("<b>SPRZEDAWCA</b>", self.styles["FieldValue"]),
-                "",
-                Paragraph("<b>NABYWCA</b>", self.styles["FieldValue"]),
-                "",
-            ],
-            ["NIP:", sprzedawca_nip, "NIP:", nabywca_nip],
-            ["Nazwa:", sprzedawca_nazwa, "Nazwa:", nabywca_nazwa],
-            ["Adres:", sprzedawca_adres, "Adres:", nabywca_adres],
-        ]
+        def party_block(label: str, p: dict) -> list:
+            """Returns rows for one party."""
+            bold = self._font_bold
+            regular = self._font_regular
+            return [
+                [Paragraph(f"<b>{label}</b>", self.styles["FieldLabel"]), ""],
+                ["NIP:", p["nip"]],
+                ["Nazwa:", p["nazwa"]],
+                ["Adres:", p["adres"]],
+            ]
 
-        table = Table(party_data, colWidths=[20 * mm, 70 * mm, 20 * mm, 70 * mm])
-        table.setStyle(
+        # Each party box is 89mm wide (180mm total - 2mm gap in middle)
+        PARTY_W = 89 * mm
+        LABEL_W = 18 * mm
+        VALUE_W = PARTY_W - LABEL_W
+
+        def party_table(label: str, p: dict) -> Table:
+            data = party_block(label, p)
+            t = Table(data, colWidths=[LABEL_W, VALUE_W])
+            t.setStyle(
+                TableStyle(
+                    [
+                        # header row
+                        ("SPAN", (0, 0), (1, 0)),
+                        ("BACKGROUND", (0, 0), (1, 0), STEEL),
+                        ("FONTNAME", (0, 0), (1, 0), self._font_bold),
+                        ("FONTSIZE", (0, 0), (1, 0), 9),
+                        ("TOPPADDING", (0, 0), (1, 0), 5),
+                        ("BOTTOMPADDING", (0, 0), (1, 0), 5),
+                        ("LEFTPADDING", (0, 0), (1, 0), 6),
+                        # data rows
+                        ("FONTNAME", (0, 1), (0, -1), self._font_bold),
+                        ("FONTNAME", (1, 1), (1, -1), self._font_regular),
+                        ("FONTSIZE", (0, 1), (-1, -1), 8),
+                        ("TOPPADDING", (0, 1), (-1, -1), 2),
+                        ("BOTTOMPADDING", (0, 1), (-1, -1), 2),
+                        ("LEFTPADDING", (0, 1), (0, -1), 6),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        # border
+                        ("BOX", (0, 0), (-1, -1), 0.5, MID_GREY),
+                        ("LINEBELOW", (0, 0), (1, 0), 0.5, MID_GREY),
+                    ]
+                )
+            )
+            return t
+
+        outer = Table(
+            [[party_table("SPRZEDAWCA", sprzedawca), "", party_table("NABYWCA", nabywca)]],
+            colWidths=[PARTY_W, 2 * mm, PARTY_W],
+            hAlign="LEFT",
+        )
+        outer.setStyle(
             TableStyle(
                 [
-                    ("FONTNAME", (0, 0), (0, -1), self._font_bold),
-                    ("FONTNAME", (2, 0), (2, -1), self._font_bold),
-                    ("FONTNAME", (1, 0), (1, -1), self._font_regular),
-                    ("FONTNAME", (3, 0), (3, -1), self._font_regular),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                    ("SPAN", (0, 0), (1, 0)),
-                    ("SPAN", (2, 0), (3, 0)),
-                    ("BACKGROUND", (0, 0), (1, 0), colors.lightgrey),
-                    ("BACKGROUND", (2, 0), (3, 0), colors.lightgrey),
-                    ("BOX", (0, 0), (1, -1), 0.5, colors.black),
-                    ("BOX", (2, 0), (3, -1), 0.5, colors.black),
+                    # Remove all padding from the gap column so 2mm isn't eaten
+                    ("LEFTPADDING", (1, 0), (1, -1), 0),
+                    ("RIGHTPADDING", (1, 0), (1, -1), 0),
+                    ("TOPPADDING", (1, 0), (1, -1), 0),
+                    ("BOTTOMPADDING", (1, 0), (1, -1), 0),
                 ]
             )
         )
-        elements.append(table)
-
-        return elements
+        return [outer]
 
     def _generuj_pozycje(self, root: etree._Element, ns: dict) -> list:
-        """Generuje tabelę pozycji faktury"""
+        """Line-items table with netto, VAT%, VAT amount, brutto columns."""
         elements = []
 
         elements.append(Paragraph("POZYCJE FAKTURY", self.styles["SectionHeader"]))
+        elements.append(HRFlowable(width="100%", thickness=1, color=NAVY, spaceAfter=3))
 
-        # Nagłówek tabeli
-        header = ["Lp.", "Nazwa", "J.m.", "Ilość", "Cena netto", "Wartość netto", "VAT %"]
+        header = ["Lp.", "Nazwa", "J.m.", "Ilość", "Cena netto", "Wartość netto", "VAT %", "Kwota VAT", "Wartość brutto"]
         data = [header]
 
-        # Pozycje
         wiersze = root.findall(".//ns:FaWiersz", ns)
         for wiersz in wiersze:
             nr = self._get_text_from_elem(wiersz, "ns:NrWierszaFa", ns) or ""
@@ -322,165 +428,254 @@ class KSeFPDFGenerator:
             jm = self._get_text_from_elem(wiersz, "ns:P_8A", ns) or ""
             ilosc = self._get_text_from_elem(wiersz, "ns:P_8B", ns) or ""
             cena = self._get_text_from_elem(wiersz, "ns:P_9A", ns) or ""
-            wartosc = self._get_text_from_elem(wiersz, "ns:P_11", ns) or ""
-            vat = self._get_text_from_elem(wiersz, "ns:P_12", ns) or ""
+            wartosc_netto = self._get_text_from_elem(wiersz, "ns:P_11", ns) or ""
+            vat_rate = self._get_text_from_elem(wiersz, "ns:P_12", ns) or ""
 
-            data.append([nr, nazwa, jm, ilosc, cena, wartosc, f"{vat}%"])
+            # Calculate VAT amount and gross value
+            try:
+                netto_val = float(wartosc_netto)
+                vat_pct = float(vat_rate)
+                kwota_vat = round(netto_val * vat_pct / 100, 2)
+                brutto = round(netto_val + kwota_vat, 2)
+                kwota_vat_str = f"{kwota_vat:.2f}"
+                brutto_str = f"{brutto:.2f}"
+            except (ValueError, TypeError):
+                kwota_vat_str = ""
+                brutto_str = ""
 
-        col_widths = [10 * mm, 60 * mm, 15 * mm, 20 * mm, 25 * mm, 30 * mm, 20 * mm]
+            # Format VAT rate label
+            vat_label = f"{vat_rate}%" if vat_rate.replace(".", "").isdigit() else vat_rate
+
+            data.append([nr, nazwa, jm, ilosc, cena, wartosc_netto, vat_label, kwota_vat_str, brutto_str])
+
+        col_widths = [8 * mm, 52 * mm, 12 * mm, 14 * mm, 22 * mm, 22 * mm, 12 * mm, 18 * mm, 20 * mm]
         table = Table(data, colWidths=col_widths)
         table.setStyle(
             TableStyle(
                 [
+                    # Header
                     ("FONTNAME", (0, 0), (-1, 0), self._font_bold),
-                    ("FONTNAME", (0, 1), (-1, -1), self._font_regular),
-                    ("FONTSIZE", (0, 0), (-1, -1), 8),
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                    ("FONTSIZE", (0, 0), (-1, 0), 7),
+                    ("BACKGROUND", (0, 0), (-1, 0), STEEL),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), NAVY),
                     ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                    ("ALIGN", (0, 1), (0, -1), "CENTER"),
-                    ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+                    ("TOPPADDING", (0, 0), (-1, 0), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+                    # Data rows
+                    ("FONTNAME", (0, 1), (-1, -1), self._font_regular),
+                    ("FONTSIZE", (0, 1), (-1, -1), 8),
+                    ("TOPPADDING", (0, 1), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 1), (-1, -1), 3),
+                    # Alignment
+                    ("ALIGN", (0, 1), (0, -1), "CENTER"),   # Lp.
+                    ("ALIGN", (2, 1), (2, -1), "CENTER"),   # J.m.
+                    ("ALIGN", (3, 1), (-1, -1), "RIGHT"),   # numeric columns
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    # Borders
+                    ("LINEBELOW", (0, 0), (-1, 0), 1, NAVY),
+                    ("LINEBELOW", (0, 1), (-1, -1), 0.25, MID_GREY),
+                    ("BOX", (0, 0), (-1, -1), 0.5, MID_GREY),
+                    # Highlight brutto column
+                    ("FONTNAME", (-1, 1), (-1, -1), self._font_bold),
                 ]
             )
         )
         elements.append(table)
-
         return elements
 
-    def _get_text_from_elem(
-        self, parent: etree._Element, xpath: str, ns: dict, default: Optional[str] = None
-    ) -> Optional[str]:
-        """Pobiera tekst z elementu XML względem rodzica"""
-        elem = parent.find(xpath, ns)
-        return elem.text if elem is not None else default
-
     def _generuj_podsumowanie(self, root: etree._Element, ns: dict) -> list:
-        """Generuje podsumowanie kwot"""
+        """Summary table: per-rate netto/VAT breakdown + total brutto."""
         elements = []
 
         elements.append(Paragraph("PODSUMOWANIE", self.styles["SectionHeader"]))
+        elements.append(HRFlowable(width="100%", thickness=1, color=NAVY, spaceAfter=3))
 
-        suma_netto = self._get_text(root, ".//ns:Fa/ns:P_13_1", ns) or "0.00"
-        suma_vat = self._get_text(root, ".//ns:Fa/ns:P_14_1", ns) or "0.00"
-        suma_brutto = self._get_text(root, ".//ns:Fa/ns:P_15", ns) or "0.00"
         waluta = self._get_text(root, ".//ns:Fa/ns:KodWaluty", ns) or "PLN"
+        suma_brutto = self._get_text(root, ".//ns:Fa/ns:P_15", ns) or "0.00"
 
-        summary_data = [
-            ["Suma netto:", f"{suma_netto} {waluta}"],
-            ["Suma VAT:", f"{suma_vat} {waluta}"],
-            ["SUMA BRUTTO:", f"{suma_brutto} {waluta}"],
-        ]
+        # Collect per-rate rows (P_13_X = netto, P_14_X = VAT)
+        rate_rows = []
+        for idx, label in VAT_RATE_LABELS.items():
+            netto = self._get_text(root, f".//ns:Fa/ns:P_13_{idx}", ns)
+            vat = self._get_text(root, f".//ns:Fa/ns:P_14_{idx}", ns)
+            if netto is not None:
+                try:
+                    brutto_val = float(netto) + float(vat or "0")
+                    vat_str = f"{float(vat):.2f} {waluta}" if vat else f"0.00 {waluta}"
+                    rate_rows.append(
+                        [
+                            f"Stawka {label}:",
+                            f"{float(netto):.2f} {waluta}",
+                            vat_str,
+                            f"{brutto_val:.2f} {waluta}",
+                        ]
+                    )
+                except (ValueError, TypeError):
+                    pass
 
-        table = Table(summary_data, colWidths=[130 * mm, 50 * mm])
-        table.setStyle(
-            TableStyle(
-                [
-                    ("FONTNAME", (0, 0), (0, -1), self._font_bold),
-                    ("FONTNAME", (1, 0), (1, 1), self._font_regular),
-                    ("FONTSIZE", (0, 0), (-1, -1), 10),
-                    ("ALIGN", (0, 0), (0, -1), "RIGHT"),
-                    ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-                    ("FONTNAME", (0, 2), (1, 2), self._font_bold),
-                    ("FONTSIZE", (0, 2), (1, 2), 12),
-                    ("BACKGROUND", (0, 2), (1, 2), colors.lightgrey),
-                    ("BOX", (0, 2), (1, 2), 1, colors.black),
-                ]
-            )
-        )
-        elements.append(table)
+        # If we have per-rate data, show a breakdown header first
+        W = 180 * mm
+        left = 90 * mm
+        right_cols = [30 * mm, 30 * mm, 30 * mm]
 
-        return elements
-
-    def _generuj_platnosc(self, root: etree._Element, ns: dict) -> list:
-        """Generuje sekcję płatności"""
-        elements = []
-
-        forma_platnosci_kod = self._get_text(root, ".//ns:Platnosc/ns:FormaPlatnosci", ns) or "-"
-
-        # Mapowanie kodów form płatności
-        formy_platnosci = {
-            "1": "Gotówka",
-            "2": "Karta płatnicza",
-            "3": "Bon",
-            "4": "Czek",
-            "5": "Kredyt",
-            "6": "Przelew",
-            "7": "Płatność mobilna",
-        }
-        forma_platnosci = formy_platnosci.get(forma_platnosci_kod, forma_platnosci_kod)
-
-        payment_data = [["Forma płatności:", forma_platnosci]]
-
-        table = Table(payment_data, colWidths=[45 * mm, 135 * mm])
-        table.setStyle(
-            TableStyle(
-                [
-                    ("FONTNAME", (0, 0), (0, -1), self._font_bold),
-                    ("FONTNAME", (1, 0), (1, -1), self._font_regular),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ]
-            )
-        )
-        elements.append(table)
-
-        return elements
-
-    def _generuj_dodatkowe_opisy(self, root: etree._Element, ns: dict) -> list:
-        """Generuje sekcję dodatkowych opisów (DodatkowyOpis)"""
-        elements: list = []
-
-        dodatkowe_opisy = root.findall(".//ns:Fa/ns:DodatkowyOpis", ns)
-        if not dodatkowe_opisy:
-            return elements
-
-        elements.append(Paragraph("DODATKOWE INFORMACJE", self.styles["SectionHeader"]))
-
-        opisy_data = []
-        for opis in dodatkowe_opisy:
-            klucz = self._get_text_from_elem(opis, "ns:Klucz", ns) or ""
-            wartosc = self._get_text_from_elem(opis, "ns:Wartosc", ns) or ""
-            opisy_data.append([f"{klucz}:", wartosc])
-
-        if opisy_data:
-            table = Table(opisy_data, colWidths=[45 * mm, 135 * mm])
-            table.setStyle(
+        if rate_rows:
+            header_row = [
+                Paragraph("<b>Stawka VAT</b>", self.styles["FieldLabel"]),
+                Paragraph("<b>Wartość netto</b>", self.styles["FieldLabel"]),
+                Paragraph("<b>Kwota VAT</b>", self.styles["FieldLabel"]),
+                Paragraph("<b>Wartość brutto</b>", self.styles["FieldLabel"]),
+            ]
+            breakdown_data = [header_row] + [
+                [Paragraph(r[0], self.styles["FieldValue"]),
+                 Paragraph(r[1], self.styles["FieldValue"]),
+                 Paragraph(r[2], self.styles["FieldValue"]),
+                 Paragraph(r[3], self.styles["FieldValue"])]
+                for r in rate_rows
+            ]
+            breakdown_table = Table(breakdown_data, colWidths=[left] + right_cols)
+            breakdown_table.setStyle(
                 TableStyle(
                     [
-                        ("FONTNAME", (0, 0), (0, -1), self._font_bold),
-                        ("FONTNAME", (1, 0), (1, -1), self._font_regular),
-                        ("FONTSIZE", (0, 0), (-1, -1), 9),
-                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("BACKGROUND", (0, 0), (-1, 0), LIGHT_GREY),
+                        ("FONTSIZE", (0, 0), (-1, -1), 8),
+                        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("TOPPADDING", (0, 0), (-1, -1), 3),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                        ("LINEBELOW", (0, 0), (-1, 0), 0.5, MID_GREY),
+                        ("LINEBELOW", (0, 1), (-1, -1), 0.25, MID_GREY),
+                        ("BOX", (0, 0), (-1, -1), 0.5, MID_GREY),
                     ]
                 )
             )
-            elements.append(table)
+            elements.append(breakdown_table)
+            elements.append(Spacer(1, 2 * mm))
 
+        # Total brutto row (always shown) — use white-text styles so navy bg is legible
+        total_data = [
+            [
+                Paragraph("SUMA BRUTTO:", self.styles["TotalRowLabel"]),
+                Paragraph(f"{float(suma_brutto):.2f} {waluta}", self.styles["TotalRowValue"]),
+            ]
+        ]
+        total_table = Table(total_data, colWidths=[left + right_cols[0] + right_cols[1], right_cols[2]])
+        total_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), NAVY),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING", (0, 0), (0, -1), 8),
+                    ("RIGHTPADDING", (1, 0), (1, -1), 8),
+                ]
+            )
+        )
+        elements.append(total_table)
+        return elements
+
+    def _generuj_platnosc(self, root: etree._Element, ns: dict) -> list:
+        """Payment method section."""
+        kod = self._get_text(root, ".//ns:Platnosc/ns:FormaPlatnosci", ns) or "-"
+        forma = FORMY_PLATNOSCI.get(kod, kod)
+
+        # Also check for bank account and payment deadline
+        termin = self._get_text(root, ".//ns:Platnosc/ns:TerminPlatnosci/ns:Termin", ns)
+        numer_konta = self._get_text(root, ".//ns:Platnosc/ns:RachunekBankowy/ns:NrRB", ns)
+
+        rows = [[
+            Paragraph("<b>Forma płatności:</b>", self.styles["FieldLabel"]),
+            Paragraph(forma, self.styles["FieldValue"]),
+        ]]
+        if termin:
+            rows.append([
+                Paragraph("<b>Termin płatności:</b>", self.styles["FieldLabel"]),
+                Paragraph(termin, self.styles["FieldValue"]),
+            ])
+        if numer_konta:
+            rows.append([
+                Paragraph("<b>Numer rachunku:</b>", self.styles["FieldLabel"]),
+                Paragraph(numer_konta, self.styles["FieldValue"]),
+            ])
+
+        table = Table(rows, colWidths=[45 * mm, 135 * mm])
+        table.setStyle(
+            TableStyle(
+                [
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ]
+            )
+        )
+        return [table]
+
+    def _generuj_stopka(self, root: etree._Element, ns: dict) -> list:
+        """Invoice footer text from <Stopka><Informacje><StopkaFaktury>."""
+        stopka_text = self._get_text(root, ".//ns:Stopka/ns:Informacje/ns:StopkaFaktury", ns)
+        if not stopka_text or not stopka_text.strip():
+            return []
+
+        elements: list = []
+        elements.append(HRFlowable(width="100%", thickness=0.5, color=MID_GREY, spaceAfter=4))
+        elements.append(Paragraph(stopka_text.strip(), self.styles["FooterNote"]))
+        return elements
+
+    def _generuj_dodatkowe_opisy(self, root: etree._Element, ns: dict) -> list:
+        """DodatkowyOpis key-value pairs."""
+        elements: list = []
+        opisy = root.findall(".//ns:Fa/ns:DodatkowyOpis", ns)
+        if not opisy:
+            return elements
+
+        elements.append(Paragraph("DODATKOWE INFORMACJE", self.styles["SectionHeader"]))
+        elements.append(HRFlowable(width="100%", thickness=1, color=NAVY, spaceAfter=3))
+
+        rows = []
+        for opis in opisy:
+            klucz = self._get_text_from_elem(opis, "ns:Klucz", ns) or ""
+            wartosc = self._get_text_from_elem(opis, "ns:Wartosc", ns) or ""
+            rows.append([
+                Paragraph(f"<b>{klucz}:</b>", self.styles["FieldLabel"]),
+                Paragraph(wartosc, self.styles["FieldValue"]),
+            ])
+
+        table = Table(rows, colWidths=[45 * mm, 135 * mm])
+        table.setStyle(
+            TableStyle(
+                [
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                    ("LINEBELOW", (0, 0), (-1, -1), 0.25, MID_GREY),
+                ]
+            )
+        )
+        elements.append(table)
         return elements
 
     def _generuj_weryfikacja_ksef(self, numer_ksef: str) -> list:
-        """Generuje sekcję weryfikacji KSeF z kodem QR."""
+        """KSeF verification QR code section."""
         from .qr_generator import generate_qr_code_png, get_verification_url
 
         elements = []
         elements.append(Paragraph("WERYFIKACJA FAKTURY W KSeF", self.styles["SectionHeader"]))
+        elements.append(HRFlowable(width="100%", thickness=1, color=NAVY, spaceAfter=3))
 
         url = get_verification_url(numer_ksef)
         qr_png = generate_qr_code_png(url)
-
-        qr_image = Image(io.BytesIO(qr_png), width=30 * mm, height=30 * mm)
+        qr_image = Image(io.BytesIO(qr_png), width=28 * mm, height=28 * mm)
 
         info_data = [
-            [qr_image, Paragraph(f"<b>Numer KSeF:</b> {numer_ksef}", self.styles["FieldValue"])],
+            [
+                qr_image,
+                Paragraph(f"<b>Numer KSeF:</b> {numer_ksef}", self.styles["FieldValue"]),
+            ],
             [
                 "",
-                Paragraph(
-                    f"<b>Link weryfikacyjny:</b><br/>{url}",
-                    self.styles["FieldValue"],
-                ),
+                Paragraph(f"<b>Link:</b> {url}", self.styles["FieldValue"]),
             ],
             [
                 "",
@@ -491,20 +686,35 @@ class KSeFPDFGenerator:
             ],
         ]
 
-        table = Table(info_data, colWidths=[35 * mm, 145 * mm])
+        table = Table(info_data, colWidths=[32 * mm, 148 * mm])
         table.setStyle(
             TableStyle(
                 [
                     ("SPAN", (0, 0), (0, -1)),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("ALIGN", (0, 0), (0, -1), "CENTER"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                    ("BOX", (0, 0), (-1, -1), 0.5, colors.black),
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightyellow),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ("BOX", (0, 0), (-1, -1), 0.5, MID_GREY),
+                    ("BACKGROUND", (0, 0), (-1, -1), LIGHT_GREY),
+                    ("LINEAFTER", (0, 0), (0, -1), 0.5, MID_GREY),
                 ]
             )
         )
         elements.append(table)
-
         return elements
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _get_text(
+        self, root: etree._Element, xpath: str, ns: dict, default: Optional[str] = None
+    ) -> Optional[str]:
+        elem = root.find(xpath, ns)
+        return elem.text if elem is not None else default
+
+    def _get_text_from_elem(
+        self, parent: etree._Element, xpath: str, ns: dict, default: Optional[str] = None
+    ) -> Optional[str]:
+        elem = parent.find(xpath, ns)
+        return elem.text if elem is not None else default
