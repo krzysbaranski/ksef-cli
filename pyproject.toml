@@ -95,7 +95,7 @@ version_file_template = "__version__ = '{version}'"
 
 [project]
 name = "ksef-cli"
-version = "1.0.0rc5"
+version = "1.0.0rc6"
 description = "CLI tool for generating, managing, and downloading KSeF (Polish National e-Invoice System) invoices"
 readme = "README.md"
 requires-python = ">=3.13,<4"
@@ -123,6 +123,8 @@ dependencies = [
     "qrcode[pil]>=7.0.0",
     "pillow>=10.0.0",
     "cryptography>=41.0.0",
+    "questionary (>=2.1.1,<3.0.0)",
+    "rich (>=15.0.0,<16.0.0)",
 ]
 
 [project.urls]
