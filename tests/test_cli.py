@@ -1,10 +1,18 @@
 """Tests for CLI commands in ksef_cli.cli"""
 
 import json
+from unittest.mock import MagicMock
 
 from click.testing import CliRunner
 
 from ksef_cli.cli import cli
+
+
+def _q(value):
+    """Return a mock questionary prompt whose .ask() returns value."""
+    m = MagicMock()
+    m.ask.return_value = value
+    return m
 
 
 class TestValidateCommand:
@@ -73,133 +81,90 @@ class TestValidateCommand:
 class TestInteractiveCommand:
     """Tests for interactive command"""
 
-    def test_interactive_command_basic_flow(self, tmp_path):
-        """Test interactive command with basic input"""
+    def test_interactive_command_basic_flow(self, tmp_path, faktura_ksef):
+        """Test interactive command from-scratch flow produces XML and success message"""
+        from unittest.mock import patch
+
         runner = CliRunner()
+        output_file = str(tmp_path / "test_output.xml")
 
-        # Prepare input for interactive prompts
-        input_data = [
-            "n",  # Czy masz plik szablonu? (No)
-            "5260250274",  # Sprzedawca NIP
-            "Moja Firma",  # Sprzedawca Nazwa
-            "ul. Test 1",  # Sprzedawca Adres L1
-            "",  # Sprzedawca Adres L2 (empty)
-            "9492107026",  # Nabywca NIP
-            "Klient",  # Nabywca Nazwa
-            "ul. Test 2",  # Nabywca Adres L1
-            "FV/001",  # Numer faktury
-            "2026-02-01",  # Data wystawienia
-            "Warszawa",  # Miejsce wystawienia
-            "2026-02-01",  # Data sprzedaży
-            "Usługa testowa",  # Nazwa pozycji
-            "szt",  # Jednostka miary
-            "1",  # Ilość
-            "100",  # Cena netto
-            "23",  # Stawka VAT
-            "n",  # Nie dodawaj kolejnej pozycji
-            "",  # Stopka faktury (opcjonalnie, pominięcie)
-            str(tmp_path / "test_output.xml"),  # Nazwa pliku wyjściowego
-            "n",  # Czy chcesz wygenerować wizualizację PDF? (No)
-        ]
+        confirm_vals = [False, False]  # use_template=False, gen_pdf=False
+        confirm_iter = iter(confirm_vals)
 
-        result = runner.invoke(cli, ["interactive"], input="\n".join(input_data))
+        with (
+            patch(
+                "ksef_cli.interactive_template.InteractiveTemplate.create_from_scratch",
+                return_value=faktura_ksef,
+            ),
+            patch("questionary.confirm", side_effect=lambda *a, **kw: _q(next(confirm_iter))),
+            patch("questionary.text", return_value=_q(output_file)),
+            patch("ksef_cli.interactive_template.console"),
+        ):
+            result = runner.invoke(cli, ["interactive"])
 
-        # Interactive mode should complete
+        assert result.exit_code == 0
         assert "✓ Faktura wygenerowana" in result.output
         assert (tmp_path / "test_output.xml").exists()
 
-    def test_interactive_command_creates_valid_xml(self, tmp_path):
+    def test_interactive_command_creates_valid_xml(self, tmp_path, faktura_ksef):
         """Test that interactive command creates valid XML"""
         from lxml import etree
+        from unittest.mock import patch
 
         runner = CliRunner()
+        output_file = str(tmp_path / "output.xml")
 
-        input_data = [
-            "n",  # Czy masz plik szablonu? (No)
-            "5260250274",
-            "Test Firma",
-            "ul. Test 1",
-            "",
-            "9492107026",
-            "Klient",
-            "ul. Test 2",
-            "FV/001",
-            "2026-02-01",
-            "Warszawa",
-            "2026-02-01",
-            "Usługa",
-            "szt",
-            "1",
-            "100",
-            "23",
-            "n",
-            "",  # Stopka faktury (opcjonalnie, pominięcie)
-            str(tmp_path / "output.xml"),
-            "n",  # Czy chcesz wygenerować wizualizację PDF? (No)
-        ]
+        confirm_vals = [False, False]  # use_template=False, gen_pdf=False
+        confirm_iter = iter(confirm_vals)
 
-        result = runner.invoke(cli, ["interactive"], input="\n".join(input_data))
+        with (
+            patch(
+                "ksef_cli.interactive_template.InteractiveTemplate.create_from_scratch",
+                return_value=faktura_ksef,
+            ),
+            patch("questionary.confirm", side_effect=lambda *a, **kw: _q(next(confirm_iter))),
+            patch("questionary.text", return_value=_q(output_file)),
+            patch("ksef_cli.interactive_template.console"),
+        ):
+            result = runner.invoke(cli, ["interactive"])
 
-        # Interactive mode should complete successfully
         assert result.exit_code == 0
+        assert (tmp_path / "output.xml").exists()
 
-        output_file = tmp_path / "output.xml"
-        assert output_file.exists()
-
-        # Parse and validate XML
-        with open(output_file, "rb") as f:
+        with open(tmp_path / "output.xml", "rb") as f:
             tree = etree.parse(f)
 
         root = tree.getroot()
         assert root.tag.endswith("Faktura")
 
-    def test_interactive_command_multiple_items(self, tmp_path):
-        """Test interactive command with multiple items"""
+    def test_interactive_command_multiple_items(self, tmp_path, faktura_ksef):
+        """Test interactive command produces XML with all invoice items"""
+        from unittest.mock import patch
+
         runner = CliRunner()
+        output_file = str(tmp_path / "output.xml")
 
-        input_data = [
-            "n",  # Czy masz plik szablonu? (No)
-            "5260250274",
-            "Test Firma",
-            "ul. Test 1",
-            "",
-            "9492107026",
-            "Klient",
-            "ul. Test 2",
-            "FV/001",
-            "2026-02-01",
-            "Warszawa",
-            "2026-02-01",
-            "Usługa 1",  # First item
-            "szt",
-            "1",
-            "100",
-            "23",
-            "y",  # Add another item
-            "Usługa 2",  # Second item
-            "godz",
-            "2",
-            "150",
-            "23",
-            "n",  # No more items
-            "",  # Stopka faktury (opcjonalnie, pominięcie)
-            str(tmp_path / "output.xml"),
-            "n",  # Czy chcesz wygenerować wizualizację PDF? (No)
-        ]
+        confirm_vals = [False, False]  # use_template=False, gen_pdf=False
+        confirm_iter = iter(confirm_vals)
 
-        result = runner.invoke(cli, ["interactive"], input="\n".join(input_data))
+        with (
+            patch(
+                "ksef_cli.interactive_template.InteractiveTemplate.create_from_scratch",
+                return_value=faktura_ksef,
+            ),
+            patch("questionary.confirm", side_effect=lambda *a, **kw: _q(next(confirm_iter))),
+            patch("questionary.text", return_value=_q(output_file)),
+            patch("ksef_cli.interactive_template.console"),
+        ):
+            result = runner.invoke(cli, ["interactive"])
 
-        # Interactive mode should complete successfully
         assert result.exit_code == 0
+        assert (tmp_path / "output.xml").exists()
 
-        output_file = tmp_path / "output.xml"
-        assert output_file.exists()
-
-        with open(output_file, "r") as f:
-            xml_content = f.read()
-
-        assert "Usługa 1" in xml_content
-        assert "Usługa 2" in xml_content
+        xml_content = (tmp_path / "output.xml").read_text()
+        # faktura_ksef has two items: "Usługa programistyczna" and "Konsultacje IT"
+        assert "Usługa programistyczna" in xml_content
+        assert "Konsultacje IT" in xml_content
 
 
 class TestCLIVersion:
@@ -761,36 +726,42 @@ class TestInteractiveCommandValidationError:
     """Tests for ValidationError in interactive command"""
 
     def test_interactive_command_validation_error(self, tmp_path):
-        """Test interactive command ValidationError with invalid NIP (too short)"""
+        """Test interactive command handles ValidationError raised during invoice creation"""
+        from unittest.mock import patch
+
+        from pydantic import ValidationError
+
         runner = CliRunner()
 
-        # NIP '123' is too short (must be exactly 10 chars) so will trigger ValidationError
-        input_data = "\n".join(
-            [
-                "n",  # Czy masz plik szablonu? (No)
-                "123",  # Invalid NIP - too short (must be 10 chars)
-                "Firma",
-                "ul. Testowa 1",
-                "",
-                "9492107026",
-                "Klient",
-                "ul. Klienta 2",
-                "FV/001",
-                "2026-02-01",
-                "Warszawa",
-                "2026-02-01",
-                "Usługa",
-                "szt",
-                "1",
-                "100.00",
-                "23",  # stawka VAT
-                "N",  # Dodać kolejną pozycję? - No
-                "",  # stopka (empty = None)
-                str(tmp_path / "output.xml"),
-            ]
-        )
+        # Simulate create_from_scratch raising a ValidationError
+        def raise_validation_error():
+            from ksef_cli.models import Podmiot
 
-        result = runner.invoke(cli, ["interactive"], input=input_data)
+            Podmiot(nip="bad", nazwa="x", adres=None)  # triggers ValidationError
+
+        with (
+            patch(
+                "ksef_cli.interactive_template.InteractiveTemplate.create_from_scratch",
+                side_effect=lambda: (_ for _ in ()).throw(
+                    ValidationError.from_exception_data(
+                        "Podmiot",
+                        [
+                            {
+                                "type": "string_too_short",
+                                "loc": ("nip",),
+                                "msg": "String should have at least 10 characters",
+                                "input": "bad",
+                                "ctx": {"min_length": 10},
+                                "url": "",
+                            }
+                        ],
+                    )
+                ),
+            ),
+            patch("questionary.confirm", return_value=_q(False)),
+            patch("ksef_cli.interactive_template.console"),
+        ):
+            result = runner.invoke(cli, ["interactive"])
 
         assert result.exit_code != 0
         assert "walidacji" in result.output or "Błąd" in result.output
