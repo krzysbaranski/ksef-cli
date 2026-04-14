@@ -108,8 +108,9 @@ class TestInteractiveCommand:
 
     def test_interactive_command_creates_valid_xml(self, tmp_path, faktura_ksef):
         """Test that interactive command creates valid XML"""
-        from lxml import etree
         from unittest.mock import patch
+
+        from lxml import etree
 
         runner = CliRunner()
         output_file = str(tmp_path / "output.xml")
