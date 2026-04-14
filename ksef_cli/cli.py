@@ -47,9 +47,7 @@ def interactive():
         processor = InteractiveTemplate()
 
         if use_template:
-            template_file = questionary.text(
-                "Ścieżka do pliku szablonu (XML):", style=STYLE
-            ).ask()
+            template_file = questionary.text("Ścieżka do pliku szablonu (XML):", style=STYLE).ask()
             try:
                 loader = TemplateLoader()
                 template = loader.load_from_xml(template_file)

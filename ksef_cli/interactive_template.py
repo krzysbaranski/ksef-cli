@@ -296,9 +296,7 @@ class InteractiveTemplate:
         table.add_column("J.m.", justify="center", footer="")
         table.add_column("Ilość", justify="right", footer="")
         table.add_column("Cena netto", justify="right", footer="")
-        table.add_column(
-            "Wartość netto", justify="right", footer=f"[bold]{total_netto:.2f}[/bold]"
-        )
+        table.add_column("Wartość netto", justify="right", footer=f"[bold]{total_netto:.2f}[/bold]")
         table.add_column(
             "VAT%",
             justify="center",

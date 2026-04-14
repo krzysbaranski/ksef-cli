@@ -5,7 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ksef_cli.interactive_template import InteractiveTemplate, _validate_date, _validate_nip, _validate_number
+from ksef_cli.interactive_template import (
+    InteractiveTemplate,
+    _validate_date,
+    _validate_nip,
+    _validate_number,
+)
 from ksef_cli.models import (
     Adres,
     Faktura,
@@ -279,9 +284,7 @@ class TestInteractiveTemplate:
 
         with (
             patch("ksef_cli.interactive_template.console"),
-            patch(
-                "ksef_cli.interactive_template.questionary.text", return_value=_q("")
-            ),
+            patch("ksef_cli.interactive_template.questionary.text", return_value=_q("")),
         ):
             result = template._process_stopka(None)
 
@@ -291,16 +294,31 @@ class TestInteractiveTemplate:
         """Test that line items are correctly renumbered after keep/delete operations"""
         sample_invoice.faktura.pozycje = [
             PozycjaFaktury(
-                nr=1, nazwa="Item 1", jm="szt", ilosc=1.0,
-                cena_netto=100.0, wartosc_netto=100.0, stawka_vat=23,
+                nr=1,
+                nazwa="Item 1",
+                jm="szt",
+                ilosc=1.0,
+                cena_netto=100.0,
+                wartosc_netto=100.0,
+                stawka_vat=23,
             ),
             PozycjaFaktury(
-                nr=2, nazwa="Item 2", jm="szt", ilosc=2.0,
-                cena_netto=200.0, wartosc_netto=400.0, stawka_vat=23,
+                nr=2,
+                nazwa="Item 2",
+                jm="szt",
+                ilosc=2.0,
+                cena_netto=200.0,
+                wartosc_netto=400.0,
+                stawka_vat=23,
             ),
             PozycjaFaktury(
-                nr=3, nazwa="Item 3", jm="szt", ilosc=3.0,
-                cena_netto=300.0, wartosc_netto=900.0, stawka_vat=23,
+                nr=3,
+                nazwa="Item 3",
+                jm="szt",
+                ilosc=3.0,
+                cena_netto=300.0,
+                wartosc_netto=900.0,
+                stawka_vat=23,
             ),
         ]
 
@@ -361,8 +379,13 @@ class TestInteractiveTemplate:
         """Test editing an existing line item."""
         template = InteractiveTemplate()
         existing = PozycjaFaktury(
-            nr=1, nazwa="Old name", jm="szt", ilosc=1.0,
-            cena_netto=100.0, wartosc_netto=100.0, stawka_vat=23,
+            nr=1,
+            nazwa="Old name",
+            jm="szt",
+            ilosc=1.0,
+            cena_netto=100.0,
+            wartosc_netto=100.0,
+            stawka_vat=23,
         )
 
         text_values = ["New name", "kg", "2", "200", "8"]
