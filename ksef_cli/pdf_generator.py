@@ -131,7 +131,9 @@ class KSeFPDFGenerator:
 
     def _setup_styles(self):
         font_regular = "DejaVuSans" if self._font_available("DejaVuSans") else "Helvetica"
-        font_bold = "DejaVuSans-Bold" if self._font_available("DejaVuSans-Bold") else "Helvetica-Bold"
+        font_bold = (
+            "DejaVuSans-Bold" if self._font_available("DejaVuSans-Bold") else "Helvetica-Bold"
+        )
         self._font_regular = font_regular
         self._font_bold = font_bold
 
@@ -316,7 +318,12 @@ class KSeFPDFGenerator:
             return Paragraph(text, self.styles["FieldValue"])
 
         rows = [
-            [lbl("Data wystawienia:"), val(data_wystawienia), lbl("Miejsce wystawienia:"), val(miejsce)],
+            [
+                lbl("Data wystawienia:"),
+                val(data_wystawienia),
+                lbl("Miejsce wystawienia:"),
+                val(miejsce),
+            ],
             [lbl("Data sprzedaży:"), val(data_sprzedazy), lbl("Waluta:"), val(waluta)],
         ]
 
@@ -418,7 +425,17 @@ class KSeFPDFGenerator:
         elements.append(Paragraph("POZYCJE FAKTURY", self.styles["SectionHeader"]))
         elements.append(HRFlowable(width="100%", thickness=1, color=NAVY, spaceAfter=3))
 
-        header = ["Lp.", "Nazwa", "J.m.", "Ilość", "Cena netto", "Wartość netto", "VAT %", "Kwota VAT", "Wartość brutto"]
+        header = [
+            "Lp.",
+            "Nazwa",
+            "J.m.",
+            "Ilość",
+            "Cena netto",
+            "Wartość netto",
+            "VAT %",
+            "Kwota VAT",
+            "Wartość brutto",
+        ]
         data = [header]
 
         wiersze = root.findall(".//ns:FaWiersz", ns)
@@ -446,9 +463,21 @@ class KSeFPDFGenerator:
             # Format VAT rate label
             vat_label = f"{vat_rate}%" if vat_rate.replace(".", "").isdigit() else vat_rate
 
-            data.append([nr, nazwa, jm, ilosc, cena, wartosc_netto, vat_label, kwota_vat_str, brutto_str])
+            data.append(
+                [nr, nazwa, jm, ilosc, cena, wartosc_netto, vat_label, kwota_vat_str, brutto_str]
+            )
 
-        col_widths = [8 * mm, 52 * mm, 12 * mm, 14 * mm, 22 * mm, 22 * mm, 12 * mm, 18 * mm, 20 * mm]
+        col_widths = [
+            8 * mm,
+            52 * mm,
+            12 * mm,
+            14 * mm,
+            22 * mm,
+            22 * mm,
+            12 * mm,
+            18 * mm,
+            20 * mm,
+        ]
         table = Table(data, colWidths=col_widths)
         table.setStyle(
             TableStyle(
@@ -467,9 +496,9 @@ class KSeFPDFGenerator:
                     ("TOPPADDING", (0, 1), (-1, -1), 3),
                     ("BOTTOMPADDING", (0, 1), (-1, -1), 3),
                     # Alignment
-                    ("ALIGN", (0, 1), (0, -1), "CENTER"),   # Lp.
-                    ("ALIGN", (2, 1), (2, -1), "CENTER"),   # J.m.
-                    ("ALIGN", (3, 1), (-1, -1), "RIGHT"),   # numeric columns
+                    ("ALIGN", (0, 1), (0, -1), "CENTER"),  # Lp.
+                    ("ALIGN", (2, 1), (2, -1), "CENTER"),  # J.m.
+                    ("ALIGN", (3, 1), (-1, -1), "RIGHT"),  # numeric columns
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                     # Borders
                     ("LINEBELOW", (0, 0), (-1, 0), 1, NAVY),
@@ -526,10 +555,12 @@ class KSeFPDFGenerator:
                 Paragraph("<b>Wartość brutto</b>", self.styles["FieldLabel"]),
             ]
             breakdown_data = [header_row] + [
-                [Paragraph(r[0], self.styles["FieldValue"]),
-                 Paragraph(r[1], self.styles["FieldValue"]),
-                 Paragraph(r[2], self.styles["FieldValue"]),
-                 Paragraph(r[3], self.styles["FieldValue"])]
+                [
+                    Paragraph(r[0], self.styles["FieldValue"]),
+                    Paragraph(r[1], self.styles["FieldValue"]),
+                    Paragraph(r[2], self.styles["FieldValue"]),
+                    Paragraph(r[3], self.styles["FieldValue"]),
+                ]
                 for r in rate_rows
             ]
             breakdown_table = Table(breakdown_data, colWidths=[left] + right_cols)
@@ -558,7 +589,9 @@ class KSeFPDFGenerator:
                 Paragraph(f"{float(suma_brutto):.2f} {waluta}", self.styles["TotalRowValue"]),
             ]
         ]
-        total_table = Table(total_data, colWidths=[left + right_cols[0] + right_cols[1], right_cols[2]])
+        total_table = Table(
+            total_data, colWidths=[left + right_cols[0] + right_cols[1], right_cols[2]]
+        )
         total_table.setStyle(
             TableStyle(
                 [
@@ -583,20 +616,26 @@ class KSeFPDFGenerator:
         termin = self._get_text(root, ".//ns:Platnosc/ns:TerminPlatnosci/ns:Termin", ns)
         numer_konta = self._get_text(root, ".//ns:Platnosc/ns:RachunekBankowy/ns:NrRB", ns)
 
-        rows = [[
-            Paragraph("<b>Forma płatności:</b>", self.styles["FieldLabel"]),
-            Paragraph(forma, self.styles["FieldValue"]),
-        ]]
+        rows = [
+            [
+                Paragraph("<b>Forma płatności:</b>", self.styles["FieldLabel"]),
+                Paragraph(forma, self.styles["FieldValue"]),
+            ]
+        ]
         if termin:
-            rows.append([
-                Paragraph("<b>Termin płatności:</b>", self.styles["FieldLabel"]),
-                Paragraph(termin, self.styles["FieldValue"]),
-            ])
+            rows.append(
+                [
+                    Paragraph("<b>Termin płatności:</b>", self.styles["FieldLabel"]),
+                    Paragraph(termin, self.styles["FieldValue"]),
+                ]
+            )
         if numer_konta:
-            rows.append([
-                Paragraph("<b>Numer rachunku:</b>", self.styles["FieldLabel"]),
-                Paragraph(numer_konta, self.styles["FieldValue"]),
-            ])
+            rows.append(
+                [
+                    Paragraph("<b>Numer rachunku:</b>", self.styles["FieldLabel"]),
+                    Paragraph(numer_konta, self.styles["FieldValue"]),
+                ]
+            )
 
         table = Table(rows, colWidths=[45 * mm, 135 * mm])
         table.setStyle(
@@ -636,10 +675,12 @@ class KSeFPDFGenerator:
         for opis in opisy:
             klucz = self._get_text_from_elem(opis, "ns:Klucz", ns) or ""
             wartosc = self._get_text_from_elem(opis, "ns:Wartosc", ns) or ""
-            rows.append([
-                Paragraph(f"<b>{klucz}:</b>", self.styles["FieldLabel"]),
-                Paragraph(wartosc, self.styles["FieldValue"]),
-            ])
+            rows.append(
+                [
+                    Paragraph(f"<b>{klucz}:</b>", self.styles["FieldLabel"]),
+                    Paragraph(wartosc, self.styles["FieldValue"]),
+                ]
+            )
 
         table = Table(rows, colWidths=[45 * mm, 135 * mm])
         table.setStyle(
