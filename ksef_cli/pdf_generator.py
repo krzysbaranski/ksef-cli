@@ -658,7 +658,9 @@ class KSeFPDFGenerator:
 
         elements: list = []
         elements.append(HRFlowable(width="100%", thickness=0.5, color=MID_GREY, spaceAfter=4))
-        elements.append(Paragraph(stopka_text.strip(), self.styles["FooterNote"]))
+        # Convert newlines to HTML line breaks for proper display
+        formatted_stopka = stopka_text.strip().replace("\n", "<br/>")
+        elements.append(Paragraph(formatted_stopka, self.styles["FooterNote"]))
         return elements
 
     def _generuj_dodatkowe_opisy(self, root: etree._Element, ns: dict) -> list:

@@ -336,3 +336,36 @@ class TestKSeFPDFGenerator:
         assert result == output_path
         assert os.path.exists(output_path)
         assert os.path.getsize(output_path) > 0
+
+    def test_pdf_with_multiline_footer(self, sprzedawca, nabywca, tmp_path):
+        """Test PDF generation with multiline footer containing newlines"""
+        pozycja = PozycjaFaktury(
+            nr=1,
+            nazwa="Usługa",
+            jm="szt",
+            ilosc=1.0,
+            cena_netto=100.00,
+            wartosc_netto=100.00,
+            stawka_vat=23,
+        )
+        # Create footer with newlines
+        footer_text = "Linia 1\nLinia 2\nLinia 3"
+        faktura = Faktura(
+            numer="FV/001",
+            data_wystawienia=date(2026, 2, 1),
+            miejsce_wystawienia="Warszawa",
+            data_sprzedazy=date(2026, 2, 1),
+            pozycje=[pozycja],
+            stopka_faktury=footer_text,
+        )
+        faktura_ksef = FakturaKSeF(sprzedawca=sprzedawca, nabywca=nabywca, faktura=faktura)
+
+        xml_generator = KSeFGenerator()
+        xml_content = xml_generator.generuj(faktura_ksef)
+
+        pdf_generator = KSeFPDFGenerator()
+        output_path = str(tmp_path / "output_footer.pdf")
+        result = pdf_generator.generuj_z_xml(xml_content, output_path)
+
+        assert os.path.exists(result)
+        assert os.path.getsize(result) > 0
