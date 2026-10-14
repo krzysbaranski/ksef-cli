@@ -95,6 +95,10 @@ class InteractiveTemplate:
                 pozycje=pozycje,
                 forma_platnosci=faktura["forma_platnosci"],
                 stopka_faktury=stopka,
+                termin_platnosci=faktura.get("termin_platnosci"),
+                rachunek_bankowy=faktura.get("rachunek_bankowy"),
+                nazwa_banku=faktura.get("nazwa_banku"),
+                swift=faktura.get("swift"),
             ),
         )
 
@@ -149,6 +153,13 @@ class InteractiveTemplate:
         self._show_pozycje_table(pozycje)
         console.print()
 
+        # Payment info (optional)
+        console.print(Panel("[bold]Płatność (opcjonalnie)[/bold]", border_style="blue", expand=False))
+        termin_platnosci = questionary.text("Termin płatności (np. 14 dni lub 2026-04-15):", style=STYLE).ask()
+        rachunek_bankowy = questionary.text("Numer rachunku bankowego (NrRB):", style=STYLE).ask()
+        nazwa_banku = questionary.text("Nazwa banku (opcjonalnie):", style=STYLE).ask()
+        swift = questionary.text("SWIFT/BIC (opcjonalnie):", style=STYLE).ask()
+
         # Footer
         stopka_str = questionary.text(
             "Stopka faktury (opcjonalnie, Enter aby pominąć):", style=STYLE
@@ -166,6 +177,10 @@ class InteractiveTemplate:
                 waluta=waluta,
                 pozycje=pozycje,
                 stopka_faktury=stopka,
+                termin_platnosci=termin_platnosci.strip() if termin_platnosci and termin_platnosci.strip() else None,
+                rachunek_bankowy=rachunek_bankowy.strip() if rachunek_bankowy and rachunek_bankowy.strip() else None,
+                nazwa_banku=nazwa_banku.strip() if nazwa_banku and nazwa_banku.strip() else None,
+                swift=swift.strip() if swift and swift.strip() else None,
             ),
         )
 
@@ -240,6 +255,16 @@ class InteractiveTemplate:
         table.add_row("Miejsce wystawienia", faktura.miejsce_wystawienia)
         table.add_row("Data sprzedaży", str(faktura.data_sprzedazy))
         table.add_row("Waluta", faktura.waluta)
+        # Payment info
+        if faktura.termin_platnosci:
+            table.add_row("Termin płatności", faktura.termin_platnosci)
+        if faktura.rachunek_bankowy:
+            table.add_row("Numer rachunku", faktura.rachunek_bankowy)
+        if faktura.nazwa_banku:
+            table.add_row("Bank", faktura.nazwa_banku)
+        if faktura.swift:
+            table.add_row("SWIFT/BIC", faktura.swift)
+
         console.print(Panel(table, title="[bold]Dane Faktury[/bold]", border_style="blue"))
 
         keep = questionary.confirm(
@@ -263,6 +288,29 @@ class InteractiveTemplate:
                 style=STYLE,
             ).ask()
             waluta = questionary.text("Kod waluty:", default=faktura.waluta, style=STYLE).ask()
+
+            # Payment fields when editing
+            termin = questionary.text(
+                "Termin płatności (opcjonalnie):",
+                default=faktura.termin_platnosci or "",
+                style=STYLE,
+            ).ask()
+            rachunek = questionary.text(
+                "Numer rachunku bankowego (NrRB, opcjonalnie):",
+                default=faktura.rachunek_bankowy or "",
+                style=STYLE,
+            ).ask()
+            nazwa_banku = questionary.text(
+                "Nazwa banku (opcjonalnie):",
+                default=faktura.nazwa_banku or "",
+                style=STYLE,
+            ).ask()
+            swift = questionary.text(
+                "SWIFT/BIC (opcjonalnie):",
+                default=faktura.swift or "",
+                style=STYLE,
+            ).ask()
+
             return {
                 "numer": numer,
                 "data_wystawienia": datetime.strptime(data_wyst_str, "%Y-%m-%d").date(),
@@ -270,6 +318,10 @@ class InteractiveTemplate:
                 "data_sprzedazy": datetime.strptime(data_sprz_str, "%Y-%m-%d").date(),
                 "waluta": waluta,
                 "forma_platnosci": faktura.forma_platnosci,
+                "termin_platnosci": termin.strip() if termin and termin.strip() else None,
+                "rachunek_bankowy": rachunek.strip() if rachunek and rachunek.strip() else None,
+                "nazwa_banku": nazwa_banku.strip() if nazwa_banku and nazwa_banku.strip() else None,
+                "swift": swift.strip() if swift and swift.strip() else None,
             }
         return {
             "numer": faktura.numer,
@@ -278,6 +330,10 @@ class InteractiveTemplate:
             "data_sprzedazy": faktura.data_sprzedazy,
             "waluta": faktura.waluta,
             "forma_platnosci": faktura.forma_platnosci,
+            "termin_platnosci": faktura.termin_platnosci,
+            "rachunek_bankowy": faktura.rachunek_bankowy,
+            "nazwa_banku": faktura.nazwa_banku,
+            "swift": faktura.swift,
         }
 
     def _show_pozycje_table(self, pozycje: list[PozycjaFaktury]) -> None:
